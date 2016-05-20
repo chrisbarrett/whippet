@@ -21,12 +21,14 @@ identifier :: Functor f => f (AST s) -> f Text
 identifier =
     fmap $ \case
         AstModule _ (Ident i) _ -> i
+        AstSignature _ (Ident i) _ -> i
 
 
 decls :: Functor f => f (AST s) -> f [Decl s]
 decls =
     fmap $ \case
         AstModule _ _ ds -> ds
+        AstSignature _ _ ds -> ds
 
 parseFile s = runIO $ do
     file <- Paths.getDataFileName ("test/resources/" <> s)
@@ -46,3 +48,13 @@ spec = do
         it "has an empty body" $
             decls result `shouldSatisfy` is (_Success._Empty)
 
+    -- Signatures
+
+    describe "parsing an empty signature" $ do
+        result <- parseFile "2.whippet"
+        it "returns a signature" $
+            result `shouldSatisfy` is (_Success._AstSignature)
+        it "has the expected identifier" $
+            identifier result `shouldSatisfy` (("ExampleSignature" ==) . view _Success)
+        it "has an empty body" $
+            decls result `shouldSatisfy` is (_Success._Empty)
