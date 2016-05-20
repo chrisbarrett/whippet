@@ -34,6 +34,9 @@ parseFile s = runIO $ do
     file <- Paths.getDataFileName ("test/resources/" <> s)
     Parser.parseFile file
 
+shouldParseIdent r s =
+    r `shouldSatisfy` ((s ==) . view _Success)
+
 spec :: Spec
 spec = do
 
@@ -44,7 +47,7 @@ spec = do
         it "returns a module" $
             result `shouldSatisfy` is (_Success._AstModule)
         it "has the expected identifier" $
-            identifier result `shouldSatisfy` (("ExampleModule" ==) . view _Success)
+            identifier result `shouldParseIdent` "ExampleModule"
         it "has an empty body" $
             decls result `shouldSatisfy` is (_Success._Empty)
 
@@ -55,6 +58,6 @@ spec = do
         it "returns a signature" $
             result `shouldSatisfy` is (_Success._AstSignature)
         it "has the expected identifier" $
-            identifier result `shouldSatisfy` (("ExampleSignature" ==) . view _Success)
+            identifier result `shouldParseIdent` "ExampleSignature"
         it "has an empty body" $
             decls result `shouldSatisfy` is (_Success._Empty)
