@@ -9,7 +9,7 @@ import           Text.Parser.Token.Style
 import           Text.Trifecta
 
 parseFile :: MonadIO m => FilePath -> m (Result (AST Span))
-parseFile = parseFromFileEx (module' <|> signature)
+parseFile = parseFromFileEx (module' <|> signature <|> type')
 
 module' :: Parser (AST Span)
 module' = do
@@ -23,6 +23,12 @@ signature = do
     ((id, ds) :~ span) <- spanned parser
     pure (AstSignature span id ds)
 
+type' :: Parser (AST Span)
+type' = do
+    let parser = reserved "type" *> identifier
+    (id :~ span) <- spanned parser
+    pure (AstType span id)
+
 identifier :: Parser Ident
 identifier = Ident <$> ident style
 
@@ -33,4 +39,4 @@ reserved :: String -> Parser ()
 reserved = reserve style
 
 style = emptyIdents {_styleReserved = reservedChars}
-reservedChars = ["module", "signature"]
+reservedChars = ["module", "signature", "type"]
