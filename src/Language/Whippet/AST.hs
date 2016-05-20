@@ -21,6 +21,7 @@ deriving instance Ord s => Ord (Decl s)
 data AST s
     = AstModule s Ident [Decl s]
     | AstSignature s Ident [Decl s]
+    | AstType s Ident
 
 makeLenses ''AST
 makePrisms ''AST
