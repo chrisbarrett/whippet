@@ -18,6 +18,7 @@ library
   exposed-modules:     Language.Whippet.AST
                      , Language.Whippet.Parser
   build-depends:       base >= 4.7 && < 5
+                     , lens
                      , mtl
                      , parsers
                      , text
@@ -37,8 +38,8 @@ test-suite whippet-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
-                     , ansi-wl-pprint
                      , hspec
+                     , lens
                      , text
                      , trifecta
                      , whippet

@@ -1,8 +1,9 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Whippet.ParserSpec where
 
-import           Control.Lens            (( # ))
-import           Control.Lens.Prism
+import           Control.Lens
+import           Control.Lens.Extras
 import qualified Data.Either             as Either
 import           Data.Monoid             ((<>))
 import           Data.Text               (Text)
@@ -10,38 +11,38 @@ import           Language.Whippet.AST
 import qualified Language.Whippet.Parser as Parser
 import qualified Paths_whippet           as Paths
 import           Test.Hspec
-import qualified Text.Trifecta.Result    as Result
+import           Text.Trifecta
+import           Text.Trifecta.Result
 
 main :: IO ()
 main = hspec spec
 
-identifier :: Either e (AST s) -> Maybe Text
-identifier (Right (AstModule _ (Ident i) _)) = Just i
-identifier _ = Nothing
+identifier :: Functor f => f (AST s) -> f Text
+identifier =
+    fmap $ \case
+        AstModule _ (Ident i) _ -> i
 
-decls :: Either e (AST s) -> Maybe [Decl s]
-decls (Right (AstModule _ _ ds)) = Just ds
-decls _ = Nothing
+
+decls :: Functor f => f (AST s) -> f [Decl s]
+decls =
+    fmap $ \case
+        AstModule _ _ ds -> ds
+
+parseFile s = runIO $ do
+    file <- Paths.getDataFileName ("test/resources/" <> s)
+    Parser.parseFile file
 
 spec :: Spec
-spec =
+spec = do
+
+    -- Modules
+
     describe "parsing an empty module" $ do
         result <- parseFile "1.whippet"
         it "returns a module" $
-            result `shouldParseSatisfying` \ AstModule {} -> True
+            result `shouldSatisfy` is (_Success._AstModule)
         it "has the expected identifier" $
-            identifier result `shouldBe` Just "ExampleModule"
+            identifier result `shouldSatisfy` (("ExampleModule" ==) . view _Success)
         it "has an empty body" $
-            decls result `shouldBe` Just []
+            decls result `shouldSatisfy` is (_Success._Empty)
 
-type ParsedAST = Either PP.Doc (AST Span)
-
-shouldParseSatisfying :: ParsedAST -> (AST Span -> Bool) -> Expectation
-shouldParseSatisfying r p =
-    case r of
-      Result.Failure {} -> False
-      Result.Success r -> p r
-
-parseFile s = do
-    file <- runIO $ Paths.getDataFileName ("test/resources/" <> s)
-    runIO $ Parser.parseFile file
