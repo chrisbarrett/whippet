@@ -19,10 +19,11 @@ main = hspec spec
 
 identifier :: Functor f => f (AST s) -> f Text
 identifier =
-    fmap $ \case
-        AstModule _ (Ident i) _    -> i
-        AstSignature _ (Ident i) _ -> i
-        AstType _ (Ident i)        -> i
+    fmap (view identText . extract)
+  where
+    extract (AstModule _ i _)    = i
+    extract (AstSignature _ i _) = i
+    extract (AstType _ i)        = i
 
 
 decls :: Monad m => m (AST s) -> m [Decl s]
@@ -30,7 +31,7 @@ decls r =
     r >>= \case
         AstModule _ _ ds    -> pure ds
         AstSignature _ _ ds -> pure ds
-        AstType _ (Ident i) -> fail "No decls"
+        AstType {} -> fail "No decls"
 
 parseFile s = runIO $ do
     file <- Paths.getDataFileName ("test/resources/" <> s)

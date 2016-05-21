@@ -29,8 +29,10 @@ type' = do
     (id :~ span) <- spanned parser
     pure (AstType span id)
 
-identifier :: Parser Ident
-identifier = Ident <$> ident style
+identifier :: Parser (Ident Span)
+identifier = do
+    (id :~ span) <- spanned (ident style)
+    pure (Ident span id)
 
 decls :: Parser [Decl Span]
 decls = pure []
