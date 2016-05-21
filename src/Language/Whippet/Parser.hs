@@ -19,15 +19,32 @@ module' = do
 
 signature :: Parser (AST Span)
 signature = do
-    let parser = reserved "signature" *> ((,) <$> identifier <*> braces decls)
     ((id, ds) :~ span) <- spanned parser
     pure (AstSignature span id ds)
+  where
+    parser = reserved "signature" *> ((,) <$> identifier <*> braces decls)
 
 type' :: Parser (AST Span)
 type' = do
-    let parser = reserved "type" *> identifier
-    (id :~ span) <- spanned parser
-    pure (AstType span id)
+    ((id, cs) :~ span) <- spanned parser
+    pure (AstType span id cs)
+  where
+    parser = do
+        reserved "type"
+        ident <- identifier
+        cs <- optional (equals *> constructor `sepBy1` pipe)
+        let csOrEmpty = maybe [] id cs
+        pure (ident, csOrEmpty)
+
+constructor :: Parser (Ctor Span)
+constructor = do
+    ((id, ps) :~ span) <- spanned parser
+    pure (Ctor span id ps)
+  where
+    parser = do
+        ident <- identifier
+        ps <- pure []
+        pure (ident, ps)
 
 identifier :: Parser (Ident Span)
 identifier = do
@@ -39,6 +56,12 @@ decls = pure []
 
 reserved :: String -> Parser ()
 reserved = reserve style
+
+pipe :: Parser ()
+pipe = reserved "|"
+
+equals :: Parser ()
+equals = reserved "="
 
 style = emptyIdents {_styleReserved = reservedChars}
 reservedChars = ["module", "signature", "type"]

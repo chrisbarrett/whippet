@@ -23,8 +23,7 @@ identifier =
   where
     extract (AstModule _ i _)    = i
     extract (AstSignature _ i _) = i
-    extract (AstType _ i)        = i
-
+    extract (AstType _ i _)      = i
 
 decls :: Monad m => m (AST s) -> m [Decl s]
 decls r =
@@ -70,18 +69,35 @@ spec = do
 
     -- Type declarations
 
-    describe "parsing an abstract type declaration" $ do
-        result <- parseFile "3.whippet"
-        it "returns a signature" $
-            result `shouldSatisfy` is (_Right._AstType)
-        it "has the expected identifier" $
-            identifier result `shouldParseIdent` "ExampleType"
+    describe "parsing a type declaration" $ do
 
-    -- Type declarations
+        let constructors :: Functor f => f (AST s) -> f [Ctor s]
+            constructors = fmap extract
+              where
+                extract (AstType _ _ ps) = ps
+                extract _ = fail "Not a constructor"
 
-    describe "parsing an abstract type declaration" $ do
-        result <- parseFile "3.whippet"
-        it "returns a type declaration" $
-            result `shouldSatisfy` is (_Right._AstType)
-        it "has the expected identifier" $
-            identifier result `shouldParseIdent` "ExampleType"
+            ctorLabels :: Functor f => f [Ctor s] -> f [Text]
+            ctorLabels = (fmap.fmap) (view (ctorIdent.identText))
+
+            shouldHaveConstructors r xs =
+                (ctorLabels . constructors) r `shouldSatisfy` ((==) xs . view _Right)
+
+        context "abstract type" $ do
+            result <- parseFile "3.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstType)
+            it "has the expected identifier" $
+                identifier result `shouldParseIdent` "Void"
+
+        context "nullary constructor" $ do
+            result <- parseFile "4.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstType)
+            it "has the expected identifier" $
+                identifier result `shouldParseIdent` "Unit"
+            it "has the expected constructor" $
+                result `shouldHaveConstructors` ["Unit"]
+            it "has no parameters" $ do
+                let parameters = concatMap (view ctorParams) . view _Right
+                constructors result `shouldSatisfy` (is _Empty . parameters)
