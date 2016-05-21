@@ -90,7 +90,7 @@ spec = do
             it "has the expected identifier" $
                 identifier result `shouldParseIdent` "Void"
 
-        context "nullary constructor" $ do
+        context "unary constructor" $ do
             result <- parseFile "4.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstType)
@@ -98,6 +98,18 @@ spec = do
                 identifier result `shouldParseIdent` "Unit"
             it "has the expected constructor" $
                 result `shouldHaveConstructors` ["Unit"]
+            it "has no parameters" $ do
+                let parameters = concatMap (view ctorParams) . view _Right
+                constructors result `shouldSatisfy` (is _Empty . parameters)
+
+        context "multiple constructors" $ do
+            result <- parseFile "5.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstType)
+            it "has the expected identifier" $
+                identifier result `shouldParseIdent` "Bool"
+            it "has the expected constructor" $
+                result `shouldHaveConstructors` ["True", "False"]
             it "has no parameters" $ do
                 let parameters = concatMap (view ctorParams) . view _Right
                 constructors result `shouldSatisfy` (is _Empty . parameters)
