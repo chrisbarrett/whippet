@@ -17,20 +17,12 @@ import           Text.Trifecta.Result
 main :: IO ()
 main = hspec spec
 
-identifier :: Functor f => f (AST s) -> f Text
-identifier =
-    fmap (view identText . extract)
-  where
-    extract (AstModule _ i _)    = i
-    extract (AstSignature _ i _) = i
-    extract (AstType _ i _)      = i
-
-decls :: Monad m => m (AST s) -> m [Decl s]
+decls :: AST s -> [Decl s]
 decls r =
-    r >>= \case
-        AstModule _ _ ds    -> pure ds
-        AstSignature _ _ ds -> pure ds
-        AstType {} -> fail "No decls"
+    case r of
+        AstModule _ _ ds    -> ds
+        AstSignature _ _ ds -> ds
+        AstType {} -> error "No decls"
 
 parseFile s = runIO $ do
     file <- Paths.getDataFileName ("test/resources/" <> s)
@@ -39,8 +31,13 @@ parseFile s = runIO $ do
       Success x -> pure (Right x)
       Failure e -> pure (Left e)
 
-shouldParseIdent r s =
-    either (const (fail "Parse failure")) (`shouldBe` s) r
+hasIdentifier :: Text -> Either e (AST s) -> Bool
+hasIdentifier s =
+   (==) s . view (_Right.identLabel) . fmap extract
+  where
+    extract (AstModule _ i _)    = i
+    extract (AstSignature _ i _) = i
+    extract (AstType _ i _)      = i
 
 spec :: Spec
 spec = do
@@ -52,9 +49,9 @@ spec = do
         it "returns a module" $
             result `shouldSatisfy` is (_Right._AstModule)
         it "has the expected identifier" $
-            identifier result `shouldParseIdent` "ExampleModule"
+            result `shouldSatisfy` hasIdentifier "ExampleModule"
         it "has an empty body" $
-            decls result `shouldSatisfy` is (_Right._Empty)
+            result `shouldSatisfy` is (_Right._Empty) . fmap decls
 
     -- Signatures
 
@@ -63,9 +60,9 @@ spec = do
         it "returns a signature" $
             result `shouldSatisfy` is (_Right._AstSignature)
         it "has the expected identifier" $
-            identifier result `shouldParseIdent` "ExampleSignature"
+            result `shouldSatisfy` hasIdentifier "ExampleSignature"
         it "has an empty body" $
-            decls result `shouldSatisfy` is (_Right._Empty)
+            result `shouldSatisfy` is (_Right._Empty) . fmap decls
 
     -- Type declarations
 
@@ -77,39 +74,50 @@ spec = do
                 extract (AstType _ _ ps) = ps
                 extract _ = fail "Not a constructor"
 
-            ctorLabels :: Functor f => f [Ctor s] -> f [Text]
-            ctorLabels = (fmap.fmap) (view (ctorIdent.identText))
+            ctorsFromAst :: Either e (AST s) -> [Ctor s]
+            ctorsFromAst res =
+                res^._Right._AstType._3
 
-            shouldHaveConstructors r xs =
-                (ctorLabels . constructors) r `shouldSatisfy` ((==) xs . view _Right)
+            hasCtorsLabelled :: [Text] -> Either e (AST s) -> Bool
+            hasCtorsLabelled cs =
+                (==) cs
+                . fmap (view (ctorIdent.identLabel))
+                . ctorsFromAst
+
+            hasCtorParamsNamed :: [Text] -> Either e (AST s) -> Bool
+            hasCtorParamsNamed ps =
+                (==) ps
+                . map (view identLabel)
+                . concatMap (view ctorParams)
+                . ctorsFromAst
 
         context "abstract type" $ do
             result <- parseFile "3.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstType)
             it "has the expected identifier" $
-                identifier result `shouldParseIdent` "Void"
+                result `shouldSatisfy` hasIdentifier "Void"
+            it "has no constructors" $
+                result `shouldSatisfy` hasCtorsLabelled []
 
-        context "unary constructor" $ do
+        context "nullary constructor" $ do
             result <- parseFile "4.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstType)
             it "has the expected identifier" $
-                identifier result `shouldParseIdent` "Unit"
+                result `shouldSatisfy` hasIdentifier "Unit"
             it "has the expected constructor" $
-                result `shouldHaveConstructors` ["Unit"]
-            it "has no parameters" $ do
-                let parameters = concatMap (view ctorParams) . view _Right
-                constructors result `shouldSatisfy` (is _Empty . parameters)
+                result `shouldSatisfy` hasCtorsLabelled ["Unit"]
+            it "has no parameters" $
+                result `shouldSatisfy` hasCtorParamsNamed []
 
-        context "multiple constructors" $ do
+        context "multiple nullary constructors" $ do
             result <- parseFile "5.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstType)
             it "has the expected identifier" $
-                identifier result `shouldParseIdent` "Bool"
+                result `shouldSatisfy` hasIdentifier "Bool"
             it "has the expected constructor" $
-                result `shouldHaveConstructors` ["True", "False"]
-            it "has no parameters" $ do
-                let parameters = concatMap (view ctorParams) . view _Right
-                constructors result `shouldSatisfy` (is _Empty . parameters)
+                result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
+            it "has no parameters" $
+                result `shouldSatisfy` hasCtorParamsNamed []

@@ -8,8 +8,8 @@ import qualified Data.Text       as Text
 -- Identifiers
 
 data Ident s = Ident {
-      _identPos  :: !s
-    , _identText :: !Text
+      _identPos   :: !s
+    , _identLabel :: !Text
     }
     deriving (Show, Eq, Ord)
 
