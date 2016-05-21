@@ -68,15 +68,9 @@ spec = do
 
     describe "parsing a type declaration" $ do
 
-        let constructors :: Functor f => f (AST s) -> f [Ctor s]
-            constructors = fmap extract
-              where
-                extract (AstType _ _ _ ps) = ps
-                extract _ = fail "Not a constructor"
-
-            ctorsFromAst :: Either e (AST s) -> [Ctor s]
-            ctorsFromAst res =
-                res^._Right._AstType._4
+        let ctorsFromAst :: Either e (AST s) -> [Ctor s]
+            ctorsFromAst =
+                view (_Right._AstType._4)
 
             hasCtorTypeParams :: [Text] -> Either e (AST s) -> Bool
             hasCtorTypeParams cs =
@@ -128,11 +122,12 @@ spec = do
             it "has no parameters" $
                 result `shouldSatisfy` hasCtorParamsNamed []
 
-        context "type parameter" $ do
+        context "single type parameter" $ do
             result <- parseFile "6.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstType)
-            it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "Phantom"
             it "has the expected type parameter" $
                 result `shouldSatisfy` hasCtorTypeParams ["a"]
+
+        context "multiple type parameters" $ do
+            result <- parseFile "7.whippet"
+            it "has the expected type parameter" $
+                result `shouldSatisfy` hasCtorTypeParams ["source", "dest"]
