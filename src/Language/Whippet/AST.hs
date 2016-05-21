@@ -39,9 +39,30 @@ makePrisms ''Ctor
 -- Declarations
 
 data AST s
-    = AstModule s (Ident s) [Decl s]
-    | AstSignature s (Ident s) [Decl s]
-    | AstType s (Ident s) [Ctor s]
+    = AstModule
+          s
+          -- ^ Src pos
+          (Ident s)
+          -- ^ module name
+          [Decl s]
+          -- ^ inner declarations
+    | AstSignature
+          s
+          -- ^ Src pos
+          (Ident s)
+          -- ^ signature name
+          [Decl s]
+          -- ^ inner declarations
+    | AstType
+          s
+          -- ^ Src pos
+          (Ident s)
+          -- ^ Type name
+          [Ident s]
+          -- ^ Type parameters
+          [Ctor s]
+          -- ^ Constructors
+
     deriving (Show, Eq, Ord)
 
 makeLenses ''AST

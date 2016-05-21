@@ -26,15 +26,16 @@ signature = do
 
 type' :: Parser (AST Span)
 type' = do
-    ((id, cs) :~ span) <- spanned parser
-    pure (AstType span id cs)
+    ((id, ts, cs) :~ span) <- spanned parser
+    pure (AstType span id ts cs)
   where
     parser = do
         reserved "type"
         ident <- identifier
+        tsOrEmpty <- many identifier
         cs <- optional (equals *> constructor `sepBy1` pipe)
         let csOrEmpty = maybe [] id cs
-        pure (ident, csOrEmpty)
+        pure (ident, tsOrEmpty, csOrEmpty)
 
 constructor :: Parser (Ctor Span)
 constructor = do

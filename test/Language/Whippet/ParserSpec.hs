@@ -37,7 +37,7 @@ hasIdentifier s =
   where
     extract (AstModule _ i _)    = i
     extract (AstSignature _ i _) = i
-    extract (AstType _ i _)      = i
+    extract (AstType _ i _ _)    = i
 
 spec :: Spec
 spec = do
@@ -71,12 +71,18 @@ spec = do
         let constructors :: Functor f => f (AST s) -> f [Ctor s]
             constructors = fmap extract
               where
-                extract (AstType _ _ ps) = ps
+                extract (AstType _ _ _ ps) = ps
                 extract _ = fail "Not a constructor"
 
             ctorsFromAst :: Either e (AST s) -> [Ctor s]
             ctorsFromAst res =
-                res^._Right._AstType._3
+                res^._Right._AstType._4
+
+            hasCtorTypeParams :: [Text] -> Either e (AST s) -> Bool
+            hasCtorTypeParams cs =
+                (==) cs
+                . fmap (view identLabel)
+                . view (_Right._AstType._3)
 
             hasCtorsLabelled :: [Text] -> Either e (AST s) -> Bool
             hasCtorsLabelled cs =
@@ -121,3 +127,12 @@ spec = do
                 result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
             it "has no parameters" $
                 result `shouldSatisfy` hasCtorParamsNamed []
+
+        context "type parameter" $ do
+            result <- parseFile "6.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstType)
+            it "has the expected identifier" $
+                result `shouldSatisfy` hasIdentifier "Phantom"
+            it "has the expected type parameter" $
+                result `shouldSatisfy` hasCtorTypeParams ["a"]
