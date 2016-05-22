@@ -96,8 +96,8 @@ spec = do
                 . fmap (view (ctorIdent.identLabel))
                 . ctorsFromAst
 
-            hasCtorParamsNamed :: [Text] -> Either e (AST s) -> Bool
-            hasCtorParamsNamed ps =
+            hasCtorParamsWithTypes :: [Text] -> Either e (AST s) -> Bool
+            hasCtorParamsWithTypes ps = do
                 (==) ps
                 . map (view typeLabel)
                 . concatMap (view ctorParams)
@@ -135,7 +135,7 @@ spec = do
             it "has the expected constructor" $
                 result `shouldSatisfy` hasCtorsLabelled ["Unit"]
             it "has no parameters" $
-                result `shouldSatisfy` hasCtorParamsNamed []
+                result `shouldSatisfy` hasCtorParamsWithTypes []
 
         context "multiple nullary constructors" $ do
             result <- parseFile "5.whippet"
@@ -143,10 +143,15 @@ spec = do
                 result `shouldSatisfy` is (_Right._AstDataType)
             it "has the expected identifier" $
                 result `shouldSatisfy` hasIdentifier "Bool"
-            it "has the expected constructor" $
+            it "has the expected constructors" $
                 result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
             it "has no parameters" $
-                result `shouldSatisfy` hasCtorParamsNamed []
+                result `shouldSatisfy` hasCtorParamsWithTypes []
+
+        context "first constructor has a leading pipe" $ do
+            result <- parseFile "11.whippet"
+            it "has the expected constructors" $
+                result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
 
         context "single type parameter" $ do
             result <- parseFile "6.whippet"
@@ -155,7 +160,7 @@ spec = do
 
         context "multiple type parameters" $ do
             result <- parseFile "7.whippet"
-            it "has the expected type parameter" $
+            it "has the expected type parameters" $
                 result `shouldSatisfy` absTypeHasTypeParams ["source", "dest"]
 
         context "record type" $ do

@@ -46,7 +46,7 @@ typeDecl = do
 
   where
     dataType (start, ln) ident tyArgs = do
-        cs <- constructor `sepBy1` pipe
+        cs <- optional pipe *> constructor `sepBy1` pipe
         end <- position
         let span = Span start end ln
         pure (AstDataType span ident tyArgs cs)
