@@ -9,7 +9,10 @@ import           Text.Parser.Token.Style
 import           Text.Trifecta
 
 parseFile :: MonadIO m => FilePath -> m (Result (AST Span))
-parseFile = parseFromFileEx (module' <|> signature <|> type')
+parseFile = parseFromFileEx topLevel
+
+topLevel :: Parser (AST Span)
+topLevel = module' <|> signature <|> type'
 
 module' :: Parser (AST Span)
 module' = do

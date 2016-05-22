@@ -39,6 +39,8 @@ test-suite whippet-test
   main-is:             Spec.hs
   build-depends:       base
                      , hspec
+                     , utf8-string
+                     , filepath
                      , lens
                      , text
                      , trifecta

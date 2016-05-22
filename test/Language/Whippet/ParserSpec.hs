@@ -6,16 +6,33 @@ import           Control.Lens
 import           Control.Lens.Extras
 import qualified Data.Either             as Either
 import           Data.Monoid             ((<>))
+import           Data.String             (fromString)
 import           Data.Text               (Text)
 import           Language.Whippet.AST
 import qualified Language.Whippet.Parser as Parser
 import qualified Paths_whippet           as Paths
+import           System.FilePath.Posix   as FilePath
 import           Test.Hspec
 import           Text.Trifecta
+import qualified Text.Trifecta.Delta     as Delta
 import           Text.Trifecta.Result
 
 main :: IO ()
 main = hspec spec
+
+parseFile s = runIO $ do
+    file <- Paths.getDataFileName ("test/resources/" <> s)
+    content <- readFile file
+
+    -- KLUDGE: Use the 'parseByteString' function instead of 'parseFile' so the
+    -- path in the error reports are more legible.
+    let filename = FilePath.takeFileName file
+        delta = Delta.Directed (fromString filename) 0 0 0 0
+        res = parseByteString Parser.topLevel delta (fromString content)
+
+    case res of
+      Success x -> pure (Right x)
+      Failure e -> pure (Left ("\n" <> e))
 
 decls :: AST s -> [Decl s]
 decls r =
@@ -24,13 +41,6 @@ decls r =
         AstSignature _ _ ds -> ds
         AstType {}          -> error "No decls"
         AstRecordType {}    -> error "No decls"
-
-parseFile s = runIO $ do
-    file <- Paths.getDataFileName ("test/resources/" <> s)
-    res <- Parser.parseFile file
-    case res of
-      Success x -> pure (Right x)
-      Failure e -> pure (Left e)
 
 hasIdentifier :: Text -> Either e (AST s) -> Bool
 hasIdentifier s =
