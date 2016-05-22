@@ -168,3 +168,14 @@ spec = do
                 result `shouldSatisfy` hasFieldDeclsLabelled ["fst", "snd"]
             it "has the expected field types" $
                 result `shouldSatisfy` hasFieldDeclTypesNamed ["Int", "Int"]
+
+        context "record type with type parameters" $ do
+            result <- parseFile "9.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstRecordType)
+            it "has the expected identifier" $
+                result `shouldSatisfy` hasIdentifier "Pair"
+            it "has the expected fields" $
+                result `shouldSatisfy` hasFieldDeclsLabelled ["fst", "snd"]
+            it "has the expected field types" $
+                result `shouldSatisfy` hasFieldDeclTypesNamed ["a", "b"]

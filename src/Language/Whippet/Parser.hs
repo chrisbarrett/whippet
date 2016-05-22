@@ -74,7 +74,9 @@ constructor = do
 
 fieldDecl :: Parser (FieldDecl Span)
 fieldDecl = do
-    let parser = (,) <$> (identifier <?> "field name") <*> (colon *> type')
+    let parser = (,) <$> (identifier <?> "field name")
+                     <*> (colon *> type'
+                         <?> "type")
     ((id, ty) :~ span) <- spanned parser
     pure (FieldDecl span id ty)
 
@@ -94,10 +96,8 @@ type' = do
     (id :~ span) <- spanned (token parser)
     pure (Type span id)
   where
-    parser = do
-        c <- upper
-        cs <- many (alphaNum <|> oneOf "_-")
-        pure (Text.pack (c : cs))
+    parser =
+        Text.pack <$> many (alphaNum <|> oneOf "_-")
       <?> "type"
 
 typeName :: Parser (Ident Span)

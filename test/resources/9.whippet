@@ -1,0 +1,4 @@
+type Pair a b = {
+    fst: a
+  , snd: b
+}
