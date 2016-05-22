@@ -36,6 +36,18 @@ data Ctor s = Ctor {
 makeLenses ''Ctor
 makePrisms ''Ctor
 
+-- Record Fields
+
+data FieldDecl s = FieldDecl {
+      _fieldDeclSpan   :: !s
+    , _fieldDeclIdent  :: !(Ident s)
+    , _fieldDeclParams :: ![Ident s]
+    }
+    deriving (Show, Eq, Ord)
+
+makeLenses ''FieldDecl
+makePrisms ''FieldDecl
+
 -- Declarations
 
 data AST s
@@ -62,6 +74,15 @@ data AST s
           -- ^ Type parameters
           [Ctor s]
           -- ^ Constructors
+    | AstRecordType
+          s
+          -- ^ Src pos
+          (Ident s)
+          -- ^ Type name
+          [Ident s]
+          -- ^ Type parameters
+          [FieldDecl s]
+          -- ^ Fields
 
     deriving (Show, Eq, Ord)
 

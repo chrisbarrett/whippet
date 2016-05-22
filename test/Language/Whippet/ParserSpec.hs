@@ -22,7 +22,8 @@ decls r =
     case r of
         AstModule _ _ ds    -> ds
         AstSignature _ _ ds -> ds
-        AstType {} -> error "No decls"
+        AstType {}          -> error "No decls"
+        AstRecordType {}    -> error "No decls"
 
 parseFile s = runIO $ do
     file <- Paths.getDataFileName ("test/resources/" <> s)
@@ -35,9 +36,10 @@ hasIdentifier :: Text -> Either e (AST s) -> Bool
 hasIdentifier s =
    (==) s . view (_Right.identLabel) . fmap extract
   where
-    extract (AstModule _ i _)    = i
-    extract (AstSignature _ i _) = i
-    extract (AstType _ i _ _)    = i
+    extract (AstModule _ i _)       = i
+    extract (AstSignature _ i _)    = i
+    extract (AstType _ i _ _)       = i
+    extract (AstRecordType _ i _ _) = i
 
 spec :: Spec
 spec = do
@@ -91,6 +93,23 @@ spec = do
                 . concatMap (view ctorParams)
                 . ctorsFromAst
 
+            fieldDeclsFromAst :: Either e (AST s) -> [FieldDecl s]
+            fieldDeclsFromAst =
+                view (_Right._AstRecordType._4)
+
+            hasFieldDeclsLabelled :: [Text] -> Either e (AST s) -> Bool
+            hasFieldDeclsLabelled ps =
+                (==) ps
+                . fmap (view (fieldDeclIdent.identLabel))
+                . fieldDeclsFromAst
+
+            hasFieldDeclTypesNamed :: [Text] -> Either e (AST s) -> Bool
+            hasFieldDeclTypesNamed ps =
+                (==) ps
+                . map (view identLabel)
+                . concatMap (view fieldDeclParams)
+                . fieldDeclsFromAst
+
         context "abstract type" $ do
             result <- parseFile "3.whippet"
             it "returns a type declaration" $
@@ -131,3 +150,14 @@ spec = do
             result <- parseFile "7.whippet"
             it "has the expected type parameter" $
                 result `shouldSatisfy` hasCtorTypeParams ["source", "dest"]
+
+        context "record type" $ do
+            result <- parseFile "8.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstRecordType)
+            it "has the expected identifier" $
+                result `shouldSatisfy` hasIdentifier "IntPair"
+            it "has the expected fields" $
+                result `shouldSatisfy` hasFieldDeclsLabelled ["fst", "snd"]
+            it "has the expected field types" $
+                result `shouldSatisfy` hasFieldDeclTypesNamed ["Int", "Int"]
