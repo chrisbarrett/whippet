@@ -39,17 +39,11 @@ decls r =
     case r of
         AstModule _ _ ds    -> ds
         AstSignature _ _ ds -> ds
-        AstType {}          -> error "No decls"
-        AstRecordType {}    -> error "No decls"
+        _                   -> error "No inner decls"
 
 hasIdentifier :: Text -> Either e (AST s) -> Bool
 hasIdentifier s =
-   (==) s . view (_Right.identLabel) . fmap extract
-  where
-    extract (AstModule _ i _)       = i
-    extract (AstSignature _ i _)    = i
-    extract (AstType _ i _ _)       = i
-    extract (AstRecordType _ i _ _) = i
+   (==) s . view (_Right._Just.identLabel) . fmap astIdentifier
 
 spec :: Spec
 spec = do
@@ -82,13 +76,19 @@ spec = do
 
         let ctorsFromAst :: Either e (AST s) -> [Ctor s]
             ctorsFromAst =
-                view (_Right._AstType._4)
+                view (_Right._AstDataType._4)
 
-            hasCtorTypeParams :: [Text] -> Either e (AST s) -> Bool
-            hasCtorTypeParams cs =
+            typeHasTypeParams :: [Text] -> Either e (AST s) -> Bool
+            typeHasTypeParams cs =
                 (==) cs
-                . fmap (view identLabel)
-                . view (_Right._AstType._3)
+                . fmap (view typeParameterLabel)
+                . view (_Right._AstDataType._3)
+
+            absTypeHasTypeParams :: [Text] -> Either e (AST s) -> Bool
+            absTypeHasTypeParams cs =
+                (==) cs
+                . fmap (view typeParameterLabel)
+                . view (_Right._AstAbstractType._3)
 
             hasCtorsLabelled :: [Text] -> Either e (AST s) -> Bool
             hasCtorsLabelled cs =
@@ -99,7 +99,7 @@ spec = do
             hasCtorParamsNamed :: [Text] -> Either e (AST s) -> Bool
             hasCtorParamsNamed ps =
                 (==) ps
-                . map (view identLabel)
+                . map (view typeLabel)
                 . concatMap (view ctorParams)
                 . ctorsFromAst
 
@@ -116,23 +116,20 @@ spec = do
             hasFieldDeclTypesNamed :: [Text] -> Either e (AST s) -> Bool
             hasFieldDeclTypesNamed ps =
                 (==) ps
-                . map (view identLabel)
-                . concatMap (view fieldDeclParams)
+                . map (view (fieldDeclType.typeLabel))
                 . fieldDeclsFromAst
 
         context "abstract type" $ do
             result <- parseFile "3.whippet"
             it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstType)
+                result `shouldSatisfy` is (_Right._AstAbstractType)
             it "has the expected identifier" $
                 result `shouldSatisfy` hasIdentifier "Void"
-            it "has no constructors" $
-                result `shouldSatisfy` hasCtorsLabelled []
 
         context "nullary constructor" $ do
             result <- parseFile "4.whippet"
             it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstType)
+                result `shouldSatisfy` is (_Right._AstDataType)
             it "has the expected identifier" $
                 result `shouldSatisfy` hasIdentifier "Unit"
             it "has the expected constructor" $
@@ -143,7 +140,7 @@ spec = do
         context "multiple nullary constructors" $ do
             result <- parseFile "5.whippet"
             it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstType)
+                result `shouldSatisfy` is (_Right._AstDataType)
             it "has the expected identifier" $
                 result `shouldSatisfy` hasIdentifier "Bool"
             it "has the expected constructor" $
@@ -154,12 +151,12 @@ spec = do
         context "single type parameter" $ do
             result <- parseFile "6.whippet"
             it "has the expected type parameter" $
-                result `shouldSatisfy` hasCtorTypeParams ["a"]
+                result `shouldSatisfy` typeHasTypeParams ["a"]
 
         context "multiple type parameters" $ do
             result <- parseFile "7.whippet"
             it "has the expected type parameter" $
-                result `shouldSatisfy` hasCtorTypeParams ["source", "dest"]
+                result `shouldSatisfy` absTypeHasTypeParams ["source", "dest"]
 
         context "record type" $ do
             result <- parseFile "8.whippet"
