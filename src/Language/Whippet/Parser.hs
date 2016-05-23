@@ -5,6 +5,7 @@ module Language.Whippet.Parser where
 import           Control.Applicative
 import           Control.Monad.Trans     (MonadIO)
 import           Data.Monoid
+import           Data.Text               (Text)
 import qualified Data.Text               as Text
 import           Language.Whippet.AST
 import           Text.Parser.Token.Style
@@ -80,52 +81,39 @@ fieldDecl = do
     ((id, ty) :~ span) <- spanned parser
     pure (FieldDecl span id ty)
 
+decls :: Parser [Decl Span]
+decls = pure []
+
+
+-- Token types
+
 typeParameter :: Parser (TypeParameter Span)
 typeParameter = do
-    (id :~ span) <- spanned (token parser)
-    pure (TypeParameter span id)
-  where
-      parser = do
-          c <- lower
-          cs <- many (alphaNum <|> char '_')
-          pure (Text.pack (c : cs))
-        <?> "type parameter"
+    tokenLike TypeParameter ((:) <$> lower <*> many (alphaNum <|> oneOf "_"))
+      <?> "type parameter"
 
 type' :: Parser (Type Span)
-type' = do
-    (id :~ span) <- spanned (token parser)
-    pure (Type span id)
-  where
-    parser = do
-        fst <- letter
-        rest <- many (alphaNum <|> oneOf "_")
-        pure (Text.pack (fst : rest))
+type' =
+    tokenLike Type ((:) <$> letter <*> many (alphaNum <|> oneOf "_"))
       <?> "type"
 
 typeName :: Parser (Ident Span)
-typeName = do
-    (id :~ span) <- spanned (token parser)
-    pure (Ident span id)
-  where
-    parser = do
-        c <- upper
-        cs <- many (alphaNum <|> oneOf "_")
-        pure (Text.pack (c : cs))
+typeName =
+    tokenLike Ident ((:) <$> upper <*> many (alphaNum <|> oneOf "_"))
       <?> "type name"
 
 identifier :: Parser (Ident Span)
 identifier = do
-    (id :~ span) <- spanned (token parser)
-    pure (Ident span id)
-  where
-    parser = do
-        c <- lower
-        cs <- many (alphaNum <|> oneOf "_-?")
-        pure (Text.pack (c : cs))
-      <?> "identifier"
+    tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_-?"))
+      <?> "type name"
 
-decls :: Parser [Decl Span]
-decls = pure []
+tokenLike :: (Span -> Text -> t) -> Parser String -> Parser t
+tokenLike f p = do
+    (id :~ span) <- spanned (token (Text.pack <$> p))
+    pure (f span id)
+
+
+-- Helpers
 
 reserved :: String -> Parser ()
 reserved = reserve style
