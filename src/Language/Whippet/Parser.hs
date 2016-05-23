@@ -69,7 +69,7 @@ constructor = do
   where
     parser = do
         ident <- typeName
-        ps <- pure []
+        ps <- many type'
         pure (ident, ps)
 
 fieldDecl :: Parser (FieldDecl Span)
@@ -96,8 +96,10 @@ type' = do
     (id :~ span) <- spanned (token parser)
     pure (Type span id)
   where
-    parser =
-        Text.pack <$> many (alphaNum <|> oneOf "_-")
+    parser = do
+        fst <- letter
+        rest <- many (alphaNum <|> oneOf "_")
+        pure (Text.pack (fst : rest))
       <?> "type"
 
 typeName :: Parser (Ident Span)
@@ -107,7 +109,7 @@ typeName = do
   where
     parser = do
         c <- upper
-        cs <- many (alphaNum <|> oneOf "_-")
+        cs <- many (alphaNum <|> oneOf "_")
         pure (Text.pack (c : cs))
       <?> "type name"
 
