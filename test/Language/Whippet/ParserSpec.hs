@@ -184,3 +184,10 @@ spec = do
                 result `shouldSatisfy` hasFieldDeclsLabelled ["fst", "snd"]
             it "has the expected field types" $
                 result `shouldSatisfy` hasFieldDeclTypesNamed ["a", "b"]
+
+        context "constructor reference to type parameters" $ do
+            result <- parseFile "10.whippet"
+            it "has the expected type parameters" $
+                result `shouldSatisfy` typeHasTypeParams ["e", "a"]
+            it "has the expected ctor parameter types" $
+                result `shouldSatisfy` hasCtorParamsWithTypes ["e", "a"]
