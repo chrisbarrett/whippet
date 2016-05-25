@@ -43,7 +43,7 @@ decls r =
 
 hasIdentifier :: Text -> Either e (AST s) -> Bool
 hasIdentifier s =
-   (==) s . view (_Right._Just.identLabel) . fmap astIdentifier
+   (==) s . view (_Right._Just.label) . fmap astIdentifier
 
 spec :: Spec
 spec = do
@@ -93,7 +93,7 @@ spec = do
             hasCtorsLabelled :: [Text] -> Either e (AST s) -> Bool
             hasCtorsLabelled cs =
                 (==) cs
-                . fmap (view (ctorIdent.identLabel))
+                . fmap (view (ctorIdent.label))
                 . ctorsFromAst
 
             hasCtorParamsWithTypes :: [Text] -> Either e (AST s) -> Bool
@@ -103,21 +103,21 @@ spec = do
                 . concatMap (view ctorParams)
                 . ctorsFromAst
 
-            fieldDeclsFromAst :: Either e (AST s) -> [FieldDecl s]
-            fieldDeclsFromAst =
+            fieldsFromAst :: Either e (AST s) -> [Field s]
+            fieldsFromAst =
                 view (_Right._AstRecordType._4)
 
-            hasFieldDeclsLabelled :: [Text] -> Either e (AST s) -> Bool
-            hasFieldDeclsLabelled ps =
+            hasFieldsLabelled :: [Text] -> Either e (AST s) -> Bool
+            hasFieldsLabelled ps =
                 (==) ps
-                . fmap (view (fieldDeclIdent.identLabel))
-                . fieldDeclsFromAst
+                . fmap (view (fieldIdent.label))
+                . fieldsFromAst
 
-            hasFieldDeclTypesNamed :: [Text] -> Either e (AST s) -> Bool
-            hasFieldDeclTypesNamed ps =
+            hasFieldTypesNamed :: [Text] -> Either e (AST s) -> Bool
+            hasFieldTypesNamed ps =
                 (==) ps
-                . map (view (fieldDeclType.typeLabel))
-                . fieldDeclsFromAst
+                . map (view (fieldType.typeLabel))
+                . fieldsFromAst
 
         context "abstract type" $ do
             result <- parseFile "3.whippet"
@@ -170,9 +170,9 @@ spec = do
             it "has the expected identifier" $
                 result `shouldSatisfy` hasIdentifier "IntPair"
             it "has the expected fields" $
-                result `shouldSatisfy` hasFieldDeclsLabelled ["fst", "snd"]
+                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
             it "has the expected field types" $
-                result `shouldSatisfy` hasFieldDeclTypesNamed ["Int", "Int"]
+                result `shouldSatisfy` hasFieldTypesNamed ["Int", "Int"]
 
         context "record type with type parameters" $ do
             result <- parseFile "9.whippet"
@@ -181,9 +181,9 @@ spec = do
             it "has the expected identifier" $
                 result `shouldSatisfy` hasIdentifier "Pair"
             it "has the expected fields" $
-                result `shouldSatisfy` hasFieldDeclsLabelled ["fst", "snd"]
+                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
             it "has the expected field types" $
-                result `shouldSatisfy` hasFieldDeclTypesNamed ["a", "b"]
+                result `shouldSatisfy` hasFieldTypesNamed ["a", "b"]
 
         context "constructor reference to type parameters" $ do
             result <- parseFile "10.whippet"

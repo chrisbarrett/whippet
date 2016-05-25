@@ -79,19 +79,19 @@ instance Show (Ctor s) where
 
 -- Record Fields
 
-data FieldDecl s = FieldDecl {
-      _fieldDeclSpan  :: s
-    , _fieldDeclIdent :: Ident s
-    , _fieldDeclType  :: Type s
+data Field s = Field {
+      _fieldSpan  :: s
+    , _fieldIdent :: Ident s
+    , _fieldType  :: Type s
     }
     deriving (Eq, Ord)
 
-makeLenses ''FieldDecl
-makePrisms ''FieldDecl
+makeLenses ''Field
+makePrisms ''Field
 
-instance Show (FieldDecl s) where
-  show c = "FieldDecl {ident=" <> show (c^.fieldDeclIdent)
-                  <> ", type=" <> show (c^.fieldDeclType) <> "}"
+instance Show (Field s) where
+  show c = "Field {ident=" <> show (c^.fieldIdent)
+                  <> ", type=" <> show (c^.fieldType) <> "}"
 
 -- Declarations
 
@@ -100,7 +100,7 @@ data AST s
     | AstSignature    s (Ident s) [Decl s]
     | AstAbstractType s (Ident s) [TypeParameter s]
     | AstDataType     s (Ident s) [TypeParameter s] [Ctor s]
-    | AstRecordType   s (Ident s) [TypeParameter s] [FieldDecl s]
+    | AstRecordType   s (Ident s) [TypeParameter s] [Field s]
     deriving (Eq, Ord)
 
 makeLenses ''AST

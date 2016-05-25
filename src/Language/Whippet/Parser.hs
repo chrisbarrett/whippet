@@ -53,7 +53,7 @@ typeDecl = do
         pure (AstDataType span ident tyArgs cs)
 
     recordType (start, ln) ident tyArgs = do
-        flds <- braces (fieldDecl `sepBy1` comma)
+        flds <- braces (field `sepBy1` comma)
         end <- position
         let span = Span start end ln
         pure (AstRecordType span ident tyArgs flds)
@@ -73,13 +73,13 @@ constructor = do
         ps <- many type'
         pure (ident, ps)
 
-fieldDecl :: Parser (FieldDecl Span)
-fieldDecl = do
+field :: Parser (Field Span)
+field = do
     let parser = (,) <$> (identifier <?> "field name")
                      <*> (colon *> type'
                          <?> "type")
     ((id, ty) :~ span) <- spanned parser
-    pure (FieldDecl span id ty)
+    pure (Field span id ty)
 
 decls :: Parser [Decl Span]
 decls = pure []
