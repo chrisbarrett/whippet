@@ -4,12 +4,11 @@ module Language.Whippet.Frontend.Parser where
 
 import           Control.Applicative
 import           Control.Lens
-import           Control.Monad.Trans                  (MonadIO)
+import           Control.Monad.Trans           (MonadIO)
 import           Data.Monoid
-import           Data.Text                            (Text)
-import qualified Data.Text                            as Text
+import           Data.Text                     (Text)
+import qualified Data.Text                     as Text
 import           Language.Whippet.Frontend.AST
-import           Language.Whippet.Frontend.ASTHelpers
 import           Text.Parser.Token.Style
 import           Text.Trifecta
 
@@ -44,21 +43,15 @@ typeDecl = do
 
     eq <- optional equals
     case eq of
-      Just _  -> recordType pos ident tyArgs <|> dataType pos ident tyArgs
+      Just _  -> concreteType pos ident tyArgs
       Nothing -> abstractType pos ident tyArgs
 
   where
-    dataType (start, ln) ident tyArgs = do
+    concreteType (start, ln) ident tyArgs = do
         cs <- optional pipe *> constructor `sepBy1` pipe
         end <- position
         let span = Span start end ln
         pure (AstDataType span ident tyArgs cs)
-
-    recordType (start, ln) ident tyArgs = do
-        flds <- braces (field `sepBy1` comma)
-        end <- position
-        let span = Span start end ln
-        pure (AstRecordType span ident tyArgs flds)
 
     abstractType (start, ln) ident tyArgs = do
         end <- position
@@ -96,9 +89,22 @@ typeParameter = do
 
 type' :: Parser (Type Span)
 type' = do
-    i <- tokenLike Ident ((:) <$> letter <*> many (alphaNum <|> oneOf "_"))
-    pure (Type (view srcPos i) (view identifier i))
-      <?> "type"
+    start <- position
+    ln <- line
+    let mkSpan = \end -> Span start end ln
+    structuralType mkSpan <|> nominalType mkSpan
+  where
+    nominalType mkSpan = do
+        i <- (:) <$> letter <*> many (alphaNum <|> oneOf "_")
+        s <- mkSpan <$> position
+        pure (TyNominal s (Ident s (Text.pack i)))
+        <?> "type name"
+
+    structuralType mkSpan = do
+        flds <- braces (field `sepBy1` comma)
+        end <- position
+        pure (TyStructural (mkSpan end) flds)
+
 
 typeName :: Parser (Ident Span)
 typeName =
