@@ -4,7 +4,6 @@ module Language.Whippet.Frontend.ParserSpec where
 
 import           Control.Lens
 import           Control.Lens.Extras
-import qualified Data.Either                          as Either
 import           Data.Monoid                          ((<>))
 import           Data.String                          (fromString)
 import           Data.Text                            (Text)
