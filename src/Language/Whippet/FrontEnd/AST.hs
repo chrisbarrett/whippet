@@ -24,7 +24,7 @@ instance Show (Ident s) where
 
 data Type s = Type {
       _typePos   :: s
-    , _typeLabel :: Text
+    , _typeIdent :: Ident s
     }
     deriving (Eq, Ord)
 
@@ -32,21 +32,18 @@ makeLenses ''Type
 makePrisms ''Type
 
 instance Show (Type s) where
-  show = show . view typeLabel
+  show = show . view typeIdent
 
 -- Type Parameters
 
-data TypeParameter s = TypeParameter {
-      _typeParameterPos   :: s
-    , _typeParameterLabel :: Text
-    }
+newtype TypeParameter s = TypeParameter {_typeParameterIdent :: Ident s}
     deriving (Eq, Ord)
 
 makeLenses ''TypeParameter
 makePrisms ''TypeParameter
 
 instance Show (TypeParameter s) where
-  show = show . view typeParameterLabel
+  show = show . view typeParameterIdent
 
 -- Declarations
 
@@ -132,12 +129,3 @@ instance Show (AST s) where
                  <> ", tyParams=" <> show t
                  <> ", fields=" <> show cs
                  <> "}"
-
--- Utilities
-
-astIdentifier :: AST s -> Maybe (Ident s)
-astIdentifier (AstModule _ i _)       = Just i
-astIdentifier (AstSignature _ i _)    = Just i
-astIdentifier (AstAbstractType _ i _) = Just i
-astIdentifier (AstDataType _ i _ _)   = Just i
-astIdentifier (AstRecordType _ i _ _) = Just i

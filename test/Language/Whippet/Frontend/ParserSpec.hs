@@ -14,9 +14,9 @@ import qualified Language.Whippet.Frontend.Parser     as Parser
 import qualified Paths_whippet                        as Paths
 import           System.FilePath.Posix                as FilePath
 import           Test.Hspec
-import           Text.Trifecta
-import qualified Text.Trifecta.Delta                  as Delta
-import           Text.Trifecta.Result
+import qualified Text.Trifecta                        as Trifecta
+import qualified Text.Trifecta.Delta                  as Trifecta
+import qualified Text.Trifecta.Result                 as Trifecta
 
 main :: IO ()
 main = hspec spec
@@ -28,12 +28,12 @@ parseFile s = runIO $ do
     -- KLUDGE: Use the 'parseByteString' function instead of 'parseFile' so the
     -- path in the error reports are more legible.
     let filename = FilePath.takeFileName file
-        delta = Delta.Directed (fromString filename) 0 0 0 0
-        res = parseByteString Parser.topLevel delta (fromString content)
+        delta = Trifecta.Directed (fromString filename) 0 0 0 0
+        res = Trifecta.parseByteString Parser.topLevel delta (fromString content)
 
     case res of
-      Success x -> pure (Right x)
-      Failure e -> pure (Left ("\n" <> e))
+      Trifecta.Success x -> pure (Right x)
+      Trifecta.Failure e -> pure (Left ("\n" <> e))
 
 decls :: AST s -> [Decl s]
 decls r =
@@ -44,7 +44,7 @@ decls r =
 
 hasIdentifier :: Text -> Either e (AST s) -> Bool
 hasIdentifier s =
-   (==) s . view (_Right._Just.label) . fmap astIdentifier
+   (==) s . view (_Right.identifier.text)
 
 spec :: Spec
 spec = do
@@ -82,25 +82,25 @@ spec = do
             typeHasTypeParams :: [Text] -> Either e (AST s) -> Bool
             typeHasTypeParams cs =
                 (==) cs
-                . fmap (view typeParameterLabel)
+                . fmap (view (identifier.text))
                 . view (_Right._AstDataType._3)
 
             absTypeHasTypeParams :: [Text] -> Either e (AST s) -> Bool
             absTypeHasTypeParams cs =
                 (==) cs
-                . fmap (view typeParameterLabel)
+                . fmap (view (identifier.text))
                 . view (_Right._AstAbstractType._3)
 
             hasCtorsLabelled :: [Text] -> Either e (AST s) -> Bool
             hasCtorsLabelled cs =
                 (==) cs
-                . fmap (view (ctorIdent.label))
+                . fmap (view (identifier.text))
                 . ctorsFromAst
 
             hasCtorParamsWithTypes :: [Text] -> Either e (AST s) -> Bool
             hasCtorParamsWithTypes ps = do
                 (==) ps
-                . map (view typeLabel)
+                . fmap (view (identifier.text))
                 . concatMap (view ctorParams)
                 . ctorsFromAst
 
@@ -111,13 +111,13 @@ spec = do
             hasFieldsLabelled :: [Text] -> Either e (AST s) -> Bool
             hasFieldsLabelled ps =
                 (==) ps
-                . fmap (view (fieldIdent.label))
+                . fmap (view (identifier.text))
                 . fieldsFromAst
 
             hasFieldTypesNamed :: [Text] -> Either e (AST s) -> Bool
             hasFieldTypesNamed ps =
                 (==) ps
-                . map (view (fieldType.typeLabel))
+                . map (view (fieldType.identifier.text))
                 . fieldsFromAst
 
         context "abstract type" $ do

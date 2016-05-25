@@ -3,11 +3,13 @@
 module Language.Whippet.Frontend.Parser where
 
 import           Control.Applicative
-import           Control.Monad.Trans           (MonadIO)
+import           Control.Lens
+import           Control.Monad.Trans                  (MonadIO)
 import           Data.Monoid
-import           Data.Text                     (Text)
-import qualified Data.Text                     as Text
+import           Data.Text                            (Text)
+import qualified Data.Text                            as Text
 import           Language.Whippet.Frontend.AST
+import           Language.Whippet.Frontend.ASTHelpers
 import           Text.Parser.Token.Style
 import           Text.Trifecta
 
@@ -75,7 +77,7 @@ constructor = do
 
 field :: Parser (Field Span)
 field = do
-    let parser = (,) <$> (identifier <?> "field name")
+    let parser = (,) <$> (identifier' <?> "field name")
                      <*> (colon *> type'
                          <?> "type")
     ((id, ty) :~ span) <- spanned parser
@@ -89,12 +91,13 @@ decls = pure []
 
 typeParameter :: Parser (TypeParameter Span)
 typeParameter = do
-    tokenLike TypeParameter ((:) <$> lower <*> many (alphaNum <|> oneOf "_"))
+    TypeParameter <$> tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_"))
       <?> "type parameter"
 
 type' :: Parser (Type Span)
-type' =
-    tokenLike Type ((:) <$> letter <*> many (alphaNum <|> oneOf "_"))
+type' = do
+    i <- tokenLike Ident ((:) <$> letter <*> many (alphaNum <|> oneOf "_"))
+    pure (Type (view srcPos i) (view identifier i))
       <?> "type"
 
 typeName :: Parser (Ident Span)
@@ -102,8 +105,8 @@ typeName =
     tokenLike Ident ((:) <$> upper <*> many (alphaNum <|> oneOf "_"))
       <?> "type name"
 
-identifier :: Parser (Ident Span)
-identifier = do
+identifier' :: Parser (Ident Span)
+identifier' = do
     tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_-?"))
       <?> "type name"
 
