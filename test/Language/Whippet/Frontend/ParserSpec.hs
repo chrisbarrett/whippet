@@ -4,18 +4,17 @@ module Language.Whippet.Frontend.ParserSpec where
 
 import           Control.Lens
 import           Control.Lens.Extras
-import           Data.Monoid                          ((<>))
-import           Data.String                          (fromString)
-import           Data.Text                            (Text)
+import           Data.Monoid                      ((<>))
+import           Data.String                      (fromString)
+import           Data.Text                        (Text)
 import           Language.Whippet.Frontend.AST
-import           Language.Whippet.Frontend.ASTHelpers
-import qualified Language.Whippet.Frontend.Parser     as Parser
-import qualified Paths_whippet                        as Paths
-import           System.FilePath.Posix                as FilePath
+import qualified Language.Whippet.Frontend.Parser as Parser
+import qualified Paths_whippet                    as Paths
+import           System.FilePath.Posix            as FilePath
 import           Test.Hspec
-import qualified Text.Trifecta                        as Trifecta
-import qualified Text.Trifecta.Delta                  as Trifecta
-import qualified Text.Trifecta.Result                 as Trifecta
+import qualified Text.Trifecta                    as Trifecta
+import qualified Text.Trifecta.Delta              as Trifecta
+import qualified Text.Trifecta.Result             as Trifecta
 
 main :: IO ()
 main = hspec spec
@@ -51,7 +50,7 @@ spec = do
     -- Modules
 
     describe "parsing an empty module" $ do
-        result <- parseFile "1.whippet"
+        result <- parseFile "EmptyModule.whippet"
         it "returns a module" $
             result `shouldSatisfy` is (_Right._AstModule)
         it "has the expected identifier" $
@@ -62,7 +61,7 @@ spec = do
     -- Signatures
 
     describe "parsing an empty signature" $ do
-        result <- parseFile "2.whippet"
+        result <- parseFile "EmptySignature.whippet"
         it "returns a signature" $
             result `shouldSatisfy` is (_Right._AstSignature)
         it "has the expected identifier" $
@@ -97,9 +96,9 @@ spec = do
                 . ctorsFromAst
 
             hasCtorParamsWithTypes :: [Text] -> Either e (AST s) -> Bool
-            hasCtorParamsWithTypes ps = do
+            hasCtorParamsWithTypes ps =
                 (==) ps
-                . fmap (view (identifier.text))
+                . fmap (view (typeIdentifier._Just.text))
                 . concatMap (view ctorParams)
                 . ctorsFromAst
 
@@ -116,18 +115,18 @@ spec = do
             hasFieldTypesNamed :: [Text] -> Either e (AST s) -> Bool
             hasFieldTypesNamed ps =
                 (==) ps
-                . map (view (fieldType.identifier.text))
+                . fmap (view (fieldType.typeIdentifier._Just.text))
                 . fieldsFromAst
 
         context "abstract type" $ do
-            result <- parseFile "3.whippet"
+            result <- parseFile "Void.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstAbstractType)
             it "has the expected identifier" $
                 result `shouldSatisfy` hasIdentifier "Void"
 
         context "nullary constructor" $ do
-            result <- parseFile "4.whippet"
+            result <- parseFile "Unit.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstDataType)
             it "has the expected identifier" $
@@ -138,7 +137,7 @@ spec = do
                 result `shouldSatisfy` hasCtorParamsWithTypes []
 
         context "multiple nullary constructors" $ do
-            result <- parseFile "5.whippet"
+            result <- parseFile "Bool.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstDataType)
             it "has the expected identifier" $
@@ -149,22 +148,22 @@ spec = do
                 result `shouldSatisfy` hasCtorParamsWithTypes []
 
         context "first constructor has a leading pipe" $ do
-            result <- parseFile "11.whippet"
+            result <- parseFile "CtorOptionalPipe.whippet"
             it "has the expected constructors" $
                 result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
 
         context "single type parameter" $ do
-            result <- parseFile "6.whippet"
+            result <- parseFile "PhantomType.whippet"
             it "has the expected type parameter" $
                 result `shouldSatisfy` typeHasTypeParams ["a"]
 
         context "multiple type parameters" $ do
-            result <- parseFile "7.whippet"
+            result <- parseFile "CoerceType.whippet"
             it "has the expected type parameters" $
                 result `shouldSatisfy` absTypeHasTypeParams ["source", "dest"]
 
         context "record type" $ do
-            result <- parseFile "8.whippet"
+            result <- parseFile "IntPair.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstRecordType)
             it "has the expected identifier" $
@@ -175,7 +174,7 @@ spec = do
                 result `shouldSatisfy` hasFieldTypesNamed ["Int", "Int"]
 
         context "record type with type parameters" $ do
-            result <- parseFile "9.whippet"
+            result <- parseFile "Pair.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstRecordType)
             it "has the expected identifier" $
@@ -186,7 +185,7 @@ spec = do
                 result `shouldSatisfy` hasFieldTypesNamed ["a", "b"]
 
         context "constructor reference to type parameters" $ do
-            result <- parseFile "10.whippet"
+            result <- parseFile "Either.whippet"
             it "has the expected type parameters" $
                 result `shouldSatisfy` typeHasTypeParams ["e", "a"]
             it "has the expected ctor parameter types" $

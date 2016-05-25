@@ -24,7 +24,7 @@
 ;;; Code:
 
 (defconst whippet-mode-keywords
-  '("import" "signature" "module" "type" "trait" "impl"
+  '("import" "signature" "module" "type" "trait" "impl" "record"
     "let" "law" "match" "as" "fun"
     "if" "then" "else"))
 

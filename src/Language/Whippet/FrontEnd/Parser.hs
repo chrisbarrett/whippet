@@ -1,5 +1,6 @@
-{-# LANGUAGE OverloadedLists   #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedLists            #-}
+{-# LANGUAGE OverloadedStrings          #-}
 module Language.Whippet.Frontend.Parser where
 
 import           Control.Applicative
@@ -11,12 +12,15 @@ import qualified Data.Text                     as Text
 import           Language.Whippet.Frontend.AST
 import           Text.Parser.Token.Style
 import           Text.Trifecta
+import           Text.Trifecta.Delta           (Delta)
+
+-- * Parser definitions
 
 parseFile :: MonadIO m => FilePath -> m (Result (AST Span))
 parseFile = parseFromFileEx topLevel
 
 topLevel :: Parser (AST Span)
-topLevel = whiteSpace *> (module' <|> signature <|> typeDecl)
+topLevel = whiteSpace *> (module' <|> signature <|> typeDecl <|> recordDecl)
 
 module' :: Parser (AST Span)
 module' = do
@@ -30,6 +34,7 @@ signature = do
     pure (AstSignature span id ds)
   where
     parser = reserved "signature" *> ((,) <$> typeName <*> braces decls)
+
 
 typeDecl :: Parser (AST Span)
 typeDecl = do
@@ -58,6 +63,7 @@ typeDecl = do
         let span = Span start end ln
         pure (AstAbstractType span ident tyArgs)
 
+
 constructor :: Parser (Ctor Span)
 constructor = do
     ((id, ps) :~ span) <- spanned parser
@@ -68,24 +74,33 @@ constructor = do
         ps <- many type'
         pure (ident, ps)
 
+
 field :: Parser (Field Span)
 field = do
     let parser = (,) <$> (identifier' <?> "field name")
-                     <*> (colon *> type'
-                         <?> "type")
+                     <*> (colon *> type')
     ((id, ty) :~ span) <- spanned parser
     pure (Field span id ty)
+
 
 decls :: Parser [Decl Span]
 decls = pure []
 
 
--- Token types
+recordDecl :: Parser (AST Span)
+recordDecl = do
+    s <- position
+    ln <- line
+    let mkSpan end = Span s end ln
 
-typeParameter :: Parser (TypeParameter Span)
-typeParameter = do
-    TypeParameter <$> tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_"))
-      <?> "type parameter"
+    reserved "record"
+    ident <- typeName
+    tyArgs <- many typeParameter
+    equals
+    flds <- (braces (field `sepBy1` comma))
+    s <- mkSpan <$> position
+    pure (AstRecordType s ident tyArgs flds)
+
 
 type' :: Parser (Type Span)
 type' = do
@@ -95,7 +110,7 @@ type' = do
     structuralType mkSpan <|> nominalType mkSpan
   where
     nominalType mkSpan = do
-        i <- (:) <$> letter <*> many (alphaNum <|> oneOf "_")
+        i <- token ((:) <$> letter <*> many (alphaNum <|> oneOf "_"))
         s <- mkSpan <$> position
         pure (TyNominal s (Ident s (Text.pack i)))
         <?> "type name"
@@ -105,6 +120,13 @@ type' = do
         end <- position
         pure (TyStructural (mkSpan end) flds)
 
+
+-- Token types
+
+typeParameter :: Parser (TypeParameter Span)
+typeParameter = do
+    TypeParameter <$> tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_"))
+      <?> "type parameter"
 
 typeName :: Parser (Ident Span)
 typeName =
@@ -122,7 +144,12 @@ tokenLike f p = do
     pure (f span id)
 
 
--- Helpers
+-- * Helpers
+
+style :: IdentifierStyle Parser
+style = emptyIdents {_styleReserved = reservedChars}
+  where
+    reservedChars = ["module", "signature", "type", "record"]
 
 reserved :: String -> Parser ()
 reserved = reserve style
@@ -132,6 +159,3 @@ pipe = reserved "|"
 
 equals :: Parser ()
 equals = reserved "="
-
-style = emptyIdents {_styleReserved = reservedChars}
-reservedChars = ["module", "signature", "type"]

@@ -1,4 +1,4 @@
-type IntPair = {
+record IntPair = {
     fst: Int
   , snd: Int
 }

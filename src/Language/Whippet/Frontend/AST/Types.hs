@@ -81,6 +81,7 @@ data AST s
     | AstSignature    s (Ident s) [Decl s]
     | AstAbstractType s (Ident s) [TypeParameter s]
     | AstDataType     s (Ident s) [TypeParameter s] [Ctor s]
+    | AstRecordType   s (Ident s) [TypeParameter s] [Field s]
     deriving (Eq, Ord)
 
 instance Show (AST s) where
@@ -94,4 +95,9 @@ instance Show (AST s) where
       "AstDataType {ident=" <> show i
                <> ", tyParams=" <> show t
                <> ", ctors=" <> show cs
+               <> "}"
+  show (AstRecordType _ i t fs) =
+      "AstRecordType {ident=" <> show i
+               <> ", tyParams=" <> show t
+               <> ", fields=" <> show fs
                <> "}"
