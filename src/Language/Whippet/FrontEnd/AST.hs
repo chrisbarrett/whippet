@@ -1,11 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Language.Whippet.AST where
+module Language.Whippet.Frontend.AST where
 
 import           Control.Lens
 import           Control.Lens.TH
 import           Data.Monoid
 import           Data.Text       (Text)
-import qualified Data.Text       as Text
 
 -- Identifiers
 

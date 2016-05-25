@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Whippet.Parser where
+module Language.Whippet.Frontend.Parser where
 
 import           Control.Applicative
-import           Control.Monad.Trans     (MonadIO)
+import           Control.Monad.Trans           (MonadIO)
 import           Data.Monoid
-import           Data.Text               (Text)
-import qualified Data.Text               as Text
-import           Language.Whippet.AST
+import           Data.Text                     (Text)
+import qualified Data.Text                     as Text
+import           Language.Whippet.Frontend.AST
 import           Text.Parser.Token.Style
 import           Text.Trifecta
 

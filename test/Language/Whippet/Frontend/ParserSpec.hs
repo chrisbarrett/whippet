@@ -1,20 +1,21 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Whippet.ParserSpec where
+module Language.Whippet.Frontend.ParserSpec where
 
 import           Control.Lens
 import           Control.Lens.Extras
-import qualified Data.Either             as Either
-import           Data.Monoid             ((<>))
-import           Data.String             (fromString)
-import           Data.Text               (Text)
-import           Language.Whippet.AST
-import qualified Language.Whippet.Parser as Parser
-import qualified Paths_whippet           as Paths
-import           System.FilePath.Posix   as FilePath
+import qualified Data.Either                          as Either
+import           Data.Monoid                          ((<>))
+import           Data.String                          (fromString)
+import           Data.Text                            (Text)
+import           Language.Whippet.Frontend.AST
+import           Language.Whippet.Frontend.ASTHelpers
+import qualified Language.Whippet.Frontend.Parser     as Parser
+import qualified Paths_whippet                        as Paths
+import           System.FilePath.Posix                as FilePath
 import           Test.Hspec
 import           Text.Trifecta
-import qualified Text.Trifecta.Delta     as Delta
+import qualified Text.Trifecta.Delta                  as Delta
 import           Text.Trifecta.Result
 
 main :: IO ()
