@@ -101,10 +101,6 @@ spec = do
 
         context "record type with type parameters" $ do
             result <- parseFile "Pair.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstRecordType)
-            it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "Pair"
             it "has the expected fields" $
                 result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
             it "has the expected field types" $
@@ -158,10 +154,6 @@ spec = do
 
         context "nullary constructor" $ do
             result <- parseFile "Unit.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstDataType)
-            it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "Unit"
             it "has the expected constructor" $
                 result `shouldSatisfy` hasCtorsLabelled ["Unit"]
             it "has no parameters" $
@@ -169,10 +161,6 @@ spec = do
 
         context "multiple nullary constructors" $ do
             result <- parseFile "Bool.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstDataType)
-            it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "Bool"
             it "has the expected constructors" $
                 result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
             it "has no parameters" $
@@ -195,7 +183,5 @@ spec = do
 
         context "constructor reference to type parameters" $ do
             result <- parseFile "Either.whippet"
-            it "has the expected type parameters" $
-                result `shouldSatisfy` typeHasTypeParams ["e", "a"]
             it "has the expected ctor parameter types" $
                 result `shouldSatisfy` hasCtorParamsWithTypes ["e", "a"]
