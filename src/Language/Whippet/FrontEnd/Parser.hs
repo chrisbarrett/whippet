@@ -123,7 +123,7 @@ type' = do
 recordFields :: Parser [Field Span]
 recordFields = braces (optional comma *> field `sepBy1` comma)
 
--- Token types
+-- * Token types
 
 typeParameter :: Parser (TypeParameter Span)
 typeParameter = do
