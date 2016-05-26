@@ -42,6 +42,7 @@ test-suite whippet-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
+                     , ansi-wl-pprint
                      , hspec
                      , utf8-string
                      , filepath

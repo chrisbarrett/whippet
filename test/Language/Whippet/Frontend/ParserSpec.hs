@@ -12,9 +12,12 @@ import qualified Language.Whippet.Frontend.Parser as Parser
 import qualified Paths_whippet                    as Paths
 import           System.FilePath.Posix            as FilePath
 import           Test.Hspec
+import           Text.PrettyPrint.ANSI.Leijen     (Doc)
 import qualified Text.Trifecta                    as Trifecta
 import qualified Text.Trifecta.Delta              as Trifecta
 import qualified Text.Trifecta.Result             as Trifecta
+
+type ParsedAst s = Either Doc (AST s)
 
 main :: IO ()
 main = hspec spec
@@ -40,7 +43,7 @@ decls r =
         AstSignature _ _ ds -> ds
         _                   -> error "No inner decls"
 
-astHasIdentifier :: Text -> Either e (AST s) -> Bool
+astHasIdentifier :: Text -> ParsedAst s -> Bool
 astHasIdentifier s =
    (==) s . view (_Right.identifier.text)
 
@@ -64,17 +67,19 @@ spec = do
 
     describe "parsing signatures" $ do
 
-        let hasIdentifiers :: [Text] -> Either e (AST s) -> Bool
-            hasIdentifiers names =
-                (==) names
-                . fmap (view (identifier.text))
+        let identifiers :: ParsedAst s -> [Text]
+            identifiers =
+                fmap (view (identifier.text)) . view (_Right._AstSignature._3)
+
+            parameters :: ParsedAst s -> [Text]
+            parameters =
+                fmap (view (_TyNominal._2.text))
+                . concatMap (view (_FnDecl._3))
                 . view (_Right._AstSignature._3)
 
-            hasParameters :: [Text] -> Either e (AST s) -> Bool
-            hasParameters names =
-                (==) names
-                . fmap (view (_FnDecl._2.text))
-                . view (_Right._AstSignature._3)
+            declsCount :: ParsedAst s -> Int
+            declsCount =
+                length . view (_Right._AstSignature._3)
 
         context "empty signature" $ do
             result <- parseFile "EmptySignature.whippet"
@@ -88,28 +93,24 @@ spec = do
         context "signature with function decl" $ do
             result <- parseFile "SignatureWithFn.whippet"
             it "has the expected fn name" $
-                result `shouldSatisfy` hasIdentifiers ["foo"]
+                identifiers result `shouldBe` ["foo"]
+            it "has one inner declaration" $
+                declsCount result `shouldBe` 1
             it "has the expected parameters" $
-                result `shouldSatisfy` hasParameters ["A", "B"]
+                parameters result `shouldBe` ["A", "B"]
 
     -- Type declarations
 
     describe "parsing a record declaration" $ do
-        let fieldsFromAst :: Either e (AST s) -> [Field s]
+        let fieldsFromAst :: ParsedAst s -> [Field s]
             fieldsFromAst =
                 view (_Right._AstRecordType._4)
 
-            hasFieldsLabelled :: [Text] -> Either e (AST s) -> Bool
-            hasFieldsLabelled ps =
-                (==) ps
-                . fmap (view (identifier.text))
-                . fieldsFromAst
+            fieldLabels =
+                fmap (view (identifier.text)) . fieldsFromAst
 
-            hasFieldTypesNamed :: [Text] -> Either e (AST s) -> Bool
-            hasFieldTypesNamed ps =
-                (==) ps
-                . fmap (view (fieldType.typeIdentifier._Just.text))
-                . fieldsFromAst
+            fieldTypeNames =
+                fmap (view (fieldType.typeIdentifier._Just.text)) . fieldsFromAst
 
         context "record type" $ do
             result <- parseFile "IntPair.whippet"
@@ -118,55 +119,50 @@ spec = do
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "IntPair"
             it "has the expected fields" $
-                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
+                fieldLabels result `shouldBe` ["fst", "snd"]
             it "has the expected field types" $
-                result `shouldSatisfy` hasFieldTypesNamed ["Int", "Int"]
+                fieldTypeNames result `shouldBe` ["Int", "Int"]
 
         context "record type with type parameters" $ do
             result <- parseFile "Pair.whippet"
             it "has the expected fields" $
-                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
+                fieldLabels result `shouldBe` ["fst", "snd"]
             it "has the expected field types" $
-                result `shouldSatisfy` hasFieldTypesNamed ["a", "b"]
+                fieldTypeNames result `shouldBe` ["a", "b"]
 
         context "record type with comma before first field" $ do
             result <- parseFile "RecordOptionalLeadingComma.whippet"
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstRecordType)
             it "has the expected fields" $
-                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
+                fieldLabels result `shouldBe` ["fst", "snd"]
 
 
 
     describe "parsing a type declaration" $ do
-        let ctorsFromAst :: Either e (AST s) -> [Ctor s]
+        let ctorsFromAst :: ParsedAst s -> [Ctor s]
             ctorsFromAst =
                 view (_Right._AstDataType._4)
 
-            typeHasTypeParams :: [Text] -> Either e (AST s) -> Bool
-            typeHasTypeParams cs =
-                (==) cs
-                . fmap (view (identifier.text))
-                . view (_Right._AstDataType._3)
+            typeParameters :: ParsedAst s -> [Text]
+            typeParameters =
+                fmap (view (identifier.text)) . view (_Right._AstDataType._3)
 
-            absTypeHasTypeParams :: [Text] -> Either e (AST s) -> Bool
-            absTypeHasTypeParams cs =
-                (==) cs
-                . fmap (view (identifier.text))
-                . view (_Right._AstAbstractType._3)
+            ctorLabels :: ParsedAst s -> [Text]
+            ctorLabels =
+                fmap (view (identifier.text)) . ctorsFromAst
 
-            hasCtorsLabelled :: [Text] -> Either e (AST s) -> Bool
-            hasCtorsLabelled cs =
-                (==) cs
-                . fmap (view (identifier.text))
-                . ctorsFromAst
 
-            hasCtorParamsWithTypes :: [Text] -> Either e (AST s) -> Bool
-            hasCtorParamsWithTypes ps =
-                (==) ps
-                . fmap (view (typeIdentifier._Just.text))
+            absTypeParams :: ParsedAst s -> [Text]
+            absTypeParams =
+                fmap (view (identifier.text)) . view (_Right._AstAbstractType._3)
+
+            ctorParamTypes :: ParsedAst s -> [Text]
+            ctorParamTypes =
+                fmap (view (typeIdentifier._Just.text))
                 . concatMap (view ctorParams)
                 . ctorsFromAst
+
 
         context "abstract type" $ do
             result <- parseFile "Void.whippet"
@@ -178,33 +174,33 @@ spec = do
         context "nullary constructor" $ do
             result <- parseFile "Unit.whippet"
             it "has the expected constructor" $
-                result `shouldSatisfy` hasCtorsLabelled ["Unit"]
+                ctorLabels result `shouldBe` ["Unit"]
             it "has no parameters" $
-                result `shouldSatisfy` hasCtorParamsWithTypes []
+                ctorParamTypes result `shouldBe` []
 
         context "multiple nullary constructors" $ do
             result <- parseFile "Bool.whippet"
             it "has the expected constructors" $
-                result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
+                ctorLabels result `shouldBe` ["True", "False"]
             it "has no parameters" $
-                result `shouldSatisfy` hasCtorParamsWithTypes []
+                ctorParamTypes result `shouldBe` []
 
         context "first constructor has a leading pipe" $ do
             result <- parseFile "CtorOptionalPipe.whippet"
             it "has the expected constructors" $
-                result `shouldSatisfy` hasCtorsLabelled ["True", "False"]
+                ctorLabels result `shouldBe` ["True", "False"]
 
         context "single type parameter" $ do
             result <- parseFile "PhantomType.whippet"
             it "has the expected type parameter" $
-                result `shouldSatisfy` typeHasTypeParams ["a"]
+                typeParameters result `shouldBe` ["a"]
 
         context "multiple type parameters" $ do
             result <- parseFile "CoerceType.whippet"
             it "has the expected type parameters" $
-                result `shouldSatisfy` absTypeHasTypeParams ["source", "dest"]
+                absTypeParams result `shouldBe` ["source", "dest"]
 
         context "constructor reference to type parameters" $ do
             result <- parseFile "Either.whippet"
             it "has the expected ctor parameter types" $
-                result `shouldSatisfy` hasCtorParamsWithTypes ["e", "a"]
+                ctorParamTypes result `shouldBe` ["e", "a"]
