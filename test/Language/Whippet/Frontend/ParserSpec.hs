@@ -49,25 +49,29 @@ spec = do
 
     -- Modules
 
-    describe "parsing an empty module" $ do
-        result <- parseFile "EmptyModule.whippet"
-        it "returns a module" $
-            result `shouldSatisfy` is (_Right._AstModule)
-        it "has the expected identifier" $
-            result `shouldSatisfy` hasIdentifier "ExampleModule"
-        it "has an empty body" $
-            result `shouldSatisfy` is (_Right._Empty) . fmap decls
+    describe "parsing modules" $ do
+
+        context "empty module" $ do
+            result <- parseFile "EmptyModule.whippet"
+            it "returns a module" $
+                result `shouldSatisfy` is (_Right._AstModule)
+            it "has the expected identifier" $
+                result `shouldSatisfy` hasIdentifier "ExampleModule"
+            it "has an empty body" $
+                result `shouldSatisfy` is (_Right._Empty) . fmap decls
 
     -- Signatures
 
-    describe "parsing an empty signature" $ do
-        result <- parseFile "EmptySignature.whippet"
-        it "returns a signature" $
-            result `shouldSatisfy` is (_Right._AstSignature)
-        it "has the expected identifier" $
-            result `shouldSatisfy` hasIdentifier "ExampleSignature"
-        it "has an empty body" $
-            result `shouldSatisfy` is (_Right._Empty) . fmap decls
+    describe "parsing signatures" $ do
+
+        context "empty signature" $ do
+            result <- parseFile "EmptySignature.whippet"
+            it "returns a signature" $
+                result `shouldSatisfy` is (_Right._AstSignature)
+            it "has the expected identifier" $
+                result `shouldSatisfy` hasIdentifier "ExampleSignature"
+            it "has an empty body" $
+                result `shouldSatisfy` is (_Right._Empty) . fmap decls
 
     -- Type declarations
 
