@@ -48,3 +48,13 @@ instance HasIdentifier AST where
         set (AstAbstractType p _ x) i = AstAbstractType p i x
         set (AstDataType p _ x y)   i = AstDataType p i x y
         set (AstRecordType p _ x y) i = AstRecordType p i x y
+
+instance HasIdentifier Decl where
+    identifier =
+        lens get set
+      where
+        get :: Decl s -> Ident s
+        get (FnDecl _ i _)       = i
+
+        set :: Decl s -> Ident s -> Decl s
+        set (FnDecl p _ xs)       i = FnDecl p i xs

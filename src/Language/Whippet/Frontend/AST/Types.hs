@@ -53,7 +53,7 @@ instance Show (TypeParameter s) where
 
 -- * Declarations
 
-data Decl s = Decl s
+data Decl s = FnDecl s (Ident s) [Type s]
     deriving (Eq, Ord)
 
 instance Show (Decl s) where

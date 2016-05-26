@@ -40,8 +40,8 @@ decls r =
         AstSignature _ _ ds -> ds
         _                   -> error "No inner decls"
 
-hasIdentifier :: Text -> Either e (AST s) -> Bool
-hasIdentifier s =
+astHasIdentifier :: Text -> Either e (AST s) -> Bool
+astHasIdentifier s =
    (==) s . view (_Right.identifier.text)
 
 spec :: Spec
@@ -56,7 +56,7 @@ spec = do
             it "returns a module" $
                 result `shouldSatisfy` is (_Right._AstModule)
             it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "ExampleModule"
+                result `shouldSatisfy` astHasIdentifier "ExampleModule"
             it "has an empty body" $
                 result `shouldSatisfy` is (_Right._Empty) . fmap decls
 
@@ -64,14 +64,33 @@ spec = do
 
     describe "parsing signatures" $ do
 
+        let hasIdentifiers :: [Text] -> Either e (AST s) -> Bool
+            hasIdentifiers names =
+                (==) names
+                . fmap (view (identifier.text))
+                . view (_Right._AstSignature._3)
+
+            hasParameters :: [Text] -> Either e (AST s) -> Bool
+            hasParameters names =
+                (==) names
+                . fmap (view (_FnDecl._2.text))
+                . view (_Right._AstSignature._3)
+
         context "empty signature" $ do
             result <- parseFile "EmptySignature.whippet"
             it "returns a signature" $
                 result `shouldSatisfy` is (_Right._AstSignature)
             it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "ExampleSignature"
+                result `shouldSatisfy` astHasIdentifier "ExampleSignature"
             it "has an empty body" $
                 result `shouldSatisfy` is (_Right._Empty) . fmap decls
+
+        context "signature with function decl" $ do
+            result <- parseFile "SignatureWithFn.whippet"
+            it "has the expected fn name" $
+                result `shouldSatisfy` hasIdentifiers ["foo"]
+            it "has the expected parameters" $
+                result `shouldSatisfy` hasParameters ["A", "B"]
 
     -- Type declarations
 
@@ -97,7 +116,7 @@ spec = do
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstRecordType)
             it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "IntPair"
+                result `shouldSatisfy` astHasIdentifier "IntPair"
             it "has the expected fields" $
                 result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
             it "has the expected field types" $
@@ -154,7 +173,7 @@ spec = do
             it "returns a type declaration" $
                 result `shouldSatisfy` is (_Right._AstAbstractType)
             it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "Void"
+                result `shouldSatisfy` astHasIdentifier "Void"
 
         context "nullary constructor" $ do
             result <- parseFile "Unit.whippet"
