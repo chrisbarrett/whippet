@@ -71,8 +71,55 @@ spec = do
 
     -- Type declarations
 
-    describe "parsing a type declaration" $ do
+    describe "parsing a record declaration" $ do
+        let fieldsFromAst :: Either e (AST s) -> [Field s]
+            fieldsFromAst =
+                view (_Right._AstRecordType._4)
 
+            hasFieldsLabelled :: [Text] -> Either e (AST s) -> Bool
+            hasFieldsLabelled ps =
+                (==) ps
+                . fmap (view (identifier.text))
+                . fieldsFromAst
+
+            hasFieldTypesNamed :: [Text] -> Either e (AST s) -> Bool
+            hasFieldTypesNamed ps =
+                (==) ps
+                . fmap (view (fieldType.typeIdentifier._Just.text))
+                . fieldsFromAst
+
+        context "record type" $ do
+            result <- parseFile "IntPair.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstRecordType)
+            it "has the expected identifier" $
+                result `shouldSatisfy` hasIdentifier "IntPair"
+            it "has the expected fields" $
+                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
+            it "has the expected field types" $
+                result `shouldSatisfy` hasFieldTypesNamed ["Int", "Int"]
+
+        context "record type with type parameters" $ do
+            result <- parseFile "Pair.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstRecordType)
+            it "has the expected identifier" $
+                result `shouldSatisfy` hasIdentifier "Pair"
+            it "has the expected fields" $
+                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
+            it "has the expected field types" $
+                result `shouldSatisfy` hasFieldTypesNamed ["a", "b"]
+
+        context "record type with comma before first field" $ do
+            result <- parseFile "RecordOptionalLeadingComma.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstRecordType)
+            it "has the expected fields" $
+                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
+
+
+
+    describe "parsing a type declaration" $ do
         let ctorsFromAst :: Either e (AST s) -> [Ctor s]
             ctorsFromAst =
                 view (_Right._AstDataType._4)
@@ -101,22 +148,6 @@ spec = do
                 . fmap (view (typeIdentifier._Just.text))
                 . concatMap (view ctorParams)
                 . ctorsFromAst
-
-            fieldsFromAst :: Either e (AST s) -> [Field s]
-            fieldsFromAst =
-                view (_Right._AstRecordType._4)
-
-            hasFieldsLabelled :: [Text] -> Either e (AST s) -> Bool
-            hasFieldsLabelled ps =
-                (==) ps
-                . fmap (view (identifier.text))
-                . fieldsFromAst
-
-            hasFieldTypesNamed :: [Text] -> Either e (AST s) -> Bool
-            hasFieldTypesNamed ps =
-                (==) ps
-                . fmap (view (fieldType.typeIdentifier._Just.text))
-                . fieldsFromAst
 
         context "abstract type" $ do
             result <- parseFile "Void.whippet"
@@ -161,35 +192,6 @@ spec = do
             result <- parseFile "CoerceType.whippet"
             it "has the expected type parameters" $
                 result `shouldSatisfy` absTypeHasTypeParams ["source", "dest"]
-
-        context "record type" $ do
-            result <- parseFile "IntPair.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstRecordType)
-            it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "IntPair"
-            it "has the expected fields" $
-                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
-            it "has the expected field types" $
-                result `shouldSatisfy` hasFieldTypesNamed ["Int", "Int"]
-
-        context "record type with type parameters" $ do
-            result <- parseFile "Pair.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstRecordType)
-            it "has the expected identifier" $
-                result `shouldSatisfy` hasIdentifier "Pair"
-            it "has the expected fields" $
-                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
-            it "has the expected field types" $
-                result `shouldSatisfy` hasFieldTypesNamed ["a", "b"]
-
-        context "record type with comma before first field" $ do
-            result <- parseFile "RecordOptionalLeadingComma.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstRecordType)
-            it "has the expected fields" $
-                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
 
         context "constructor reference to type parameters" $ do
             result <- parseFile "Either.whippet"
