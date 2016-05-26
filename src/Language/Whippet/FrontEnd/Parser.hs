@@ -138,7 +138,7 @@ typeName =
 identifier' :: Parser (Ident Span)
 identifier' = do
     tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_-?"))
-      <?> "type name"
+      <?> "identifier"
 
 tokenLike :: (Span -> Text -> t) -> Parser String -> Parser t
 tokenLike f p = do
