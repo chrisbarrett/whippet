@@ -97,7 +97,7 @@ recordDecl = do
     ident <- typeName
     tyArgs <- many typeParameter
     equals
-    flds <- (braces (field `sepBy1` comma))
+    flds <- recordFields
     s <- mkSpan <$> position
     pure (AstRecordType s ident tyArgs flds)
 
@@ -116,10 +116,12 @@ type' = do
         <?> "type name"
 
     structuralType mkSpan = do
-        flds <- braces (field `sepBy1` comma)
+        flds <- recordFields
         end <- position
         pure (TyStructural (mkSpan end) flds)
 
+recordFields :: Parser [Field Span]
+recordFields = braces (optional comma *> field `sepBy1` comma)
 
 -- Token types
 
