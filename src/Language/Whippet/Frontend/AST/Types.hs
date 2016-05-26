@@ -1,8 +1,18 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 module Language.Whippet.Frontend.AST.Types where
 
+import qualified Data.List   as List
 import           Data.Monoid
 import           Data.Text   (Text)
+import qualified Data.Text   as Text
+
+showRecord :: Text -> [(Text, String)] -> String
+showRecord ty fields =
+    Text.unpack ty <> "{" <> render fields <> "}"
+  where
+    render = List.intercalate ", " . fmap renderField
+    renderField (l, x) = Text.unpack l <> "=" <> x
 
 -- * Identifiers
 
@@ -26,8 +36,11 @@ data Field s = Field {
     deriving (Eq, Ord)
 
 instance Show (Field s) where
-  show Field {_fieldIdent, _fieldType} =
-      "Field {ident=" <> show _fieldIdent <> ", type=" <> show _fieldType <> "}"
+  show Field {..} =
+      showRecord "Field"
+          [ ("id", show _fieldIdent)
+          , ("type", show _fieldType)
+          ]
 
 
 -- * Type Identifiers
@@ -57,7 +70,11 @@ data Decl s = FnDecl s (Ident s) [Type s]
     deriving (Eq, Ord)
 
 instance Show (Decl s) where
-  show _ = ""
+  show (FnDecl _ i ts) =
+      showRecord "FnDecl"
+          [ ("id", show i)
+          , ("types", show ts)
+          ]
 
 
 -- * Constructors
@@ -70,8 +87,11 @@ data Ctor s = Ctor {
     deriving (Eq, Ord)
 
 instance Show (Ctor s) where
-  show Ctor {_ctorIdent, _ctorParams} =
-      "Ctor {ident=" <> show _ctorIdent <> ", params=" <> show _ctorParams <> "}"
+  show Ctor {..} =
+      showRecord "Ctor"
+          [ ("id", show _ctorIdent)
+          , ("params", show _ctorParams)
+          ]
 
 
 -- * Top-level declarations
@@ -85,19 +105,30 @@ data AST s
     deriving (Eq, Ord)
 
 instance Show (AST s) where
-  show (AstModule _ i d) =
-      "AstModule {ident=" <> show i <> ", decls=" <> show d <> "}"
-  show (AstSignature _ i d) =
-      "AstSignature {ident=" <> show i <> ", decls=" <> show d <> "}"
+  show (AstModule _ i ds) =
+      showRecord "AstModule"
+          [ ("id", show i)
+          , ("decls", show ds)
+          ]
+  show (AstSignature _ i ds) =
+      showRecord "AstSignature"
+          [ ("id", show i)
+          , ("decls", show ds)
+          ]
   show (AstAbstractType _ i t) =
-      "AstAbstractType {ident=" <> show i <> ", tyParams=" <> show t <> "}"
+      showRecord "AstAbstractType"
+          [ ("id", show i)
+          , ("params", show t)
+          ]
   show (AstDataType _ i t cs) =
-      "AstDataType {ident=" <> show i
-               <> ", tyParams=" <> show t
-               <> ", ctors=" <> show cs
-               <> "}"
+      showRecord "AstDataType"
+          [ ("id", show i)
+          , ("params", show t)
+          , ("ctors", show cs)
+          ]
   show (AstRecordType _ i t fs) =
-      "AstRecordType {ident=" <> show i
-               <> ", tyParams=" <> show t
-               <> ", fields=" <> show fs
-               <> "}"
+      showRecord "AstRecordType"
+          [ ("id", show i)
+          , ("params", show t)
+          , ("fields", show fs)
+          ]
