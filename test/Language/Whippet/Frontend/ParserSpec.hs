@@ -184,6 +184,13 @@ spec = do
             it "has the expected field types" $
                 result `shouldSatisfy` hasFieldTypesNamed ["a", "b"]
 
+        context "record type with comma before first field" $ do
+            result <- parseFile "RecordOptionalLeadingComma.whippet"
+            it "returns a type declaration" $
+                result `shouldSatisfy` is (_Right._AstRecordType)
+            it "has the expected fields" $
+                result `shouldSatisfy` hasFieldsLabelled ["fst", "snd"]
+
         context "constructor reference to type parameters" $ do
             result <- parseFile "Either.whippet"
             it "has the expected type parameters" $
