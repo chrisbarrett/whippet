@@ -1,0 +1,3 @@
+signature SignatureWithAbsType {
+  type T
+}

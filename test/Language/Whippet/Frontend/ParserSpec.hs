@@ -96,6 +96,11 @@ spec = do
             it "has the expected parameters" $
                 parameters result `shouldBe` ["A", "B"]
 
+        context "signature with abstract type" $ do
+            result <- parseFile "SignatureWithAbsType.whippet"
+            it "has the expected type name" $
+                identifiers result `shouldBe` ["T"]
+
     -- Type declarations
 
     describe "parsing a record declaration" $ do
