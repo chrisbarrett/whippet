@@ -97,7 +97,7 @@ instance Show (Ctor s) where
 -- * Top-level declarations
 
 data AST s
-    = AstModule       s (Ident s) [Decl s]
+    = AstModule       s (Ident s) [AST s]
     | AstSignature    s (Ident s) [Decl s]
     | AstAbstractType s (Ident s) [TypeParameter s]
     | AstDataType     s (Ident s) [TypeParameter s] [Ctor s]

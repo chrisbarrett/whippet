@@ -17,24 +17,32 @@ import qualified Text.Trifecta                 as Trifecta
 -- * Parser definitions
 
 parseFile :: MonadIO m => FilePath -> m (Result (AST Span))
-parseFile = parseFromFileEx topLevel
+parseFile = parseFromFileEx ast
 
-topLevel :: Parser (AST Span)
-topLevel = whiteSpace *> (module' <|> signature <|> typeDecl <|> recordDecl)
-
-module' :: Parser (AST Span)
-module' = do
-    let parser = reserved "module" *> ((,) <$> typeName <*> braces decls)
-    ((id, ds) :~ span) <- spanned parser
-    pure (AstModule span id ds)
+ast :: Parser (AST Span)
+ast = whiteSpace *> (module' <|> signature <|> typeDecl <|> recordDecl)
 
 signature :: Parser (AST Span)
 signature = do
     ((id, ds) :~ span) <- spanned parser
     pure (AstSignature span id ds)
   where
-    parser = reserved "signature" *> ((,) <$> typeName <*> braces decls)
+    parser = do
+        reserved "signature"
+        ty <- typeName
+        body <- braces decls
+        pure (ty, body)
 
+module' :: Parser (AST Span)
+module' = do
+    ((id, ds) :~ span) <- spanned parser
+    pure (AstModule span id ds)
+  where
+    parser = do
+        reserved "module"
+        ty <- typeName
+        body <- braces (many ast)
+        pure (ty, body)
 
 typeDecl :: Parser (AST Span)
 typeDecl = do

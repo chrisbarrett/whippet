@@ -30,18 +30,11 @@ parseFile s = runIO $ do
     -- path in the error reports are more legible.
     let filename = FilePath.takeFileName file
         delta = Trifecta.Directed (fromString filename) 0 0 0 0
-        res = Trifecta.parseByteString Parser.topLevel delta (fromString content)
+        res = Trifecta.parseByteString Parser.ast delta (fromString content)
 
     case res of
       Trifecta.Success x -> pure (Right x)
       Trifecta.Failure e -> pure (Left ("\n" <> e))
-
-decls :: AST s -> [Decl s]
-decls r =
-    case r of
-        AstModule _ _ ds    -> ds
-        AstSignature _ _ ds -> ds
-        _                   -> error "No inner decls"
 
 astHasIdentifier :: Text -> ParsedAst s -> Bool
 astHasIdentifier s =
@@ -53,6 +46,8 @@ spec = do
     -- Modules
 
     describe "parsing modules" $ do
+        let body :: ParsedAst s -> [AST s]
+            body = view (_Right._AstModule._3)
 
         context "empty module" $ do
             result <- parseFile "EmptyModule.whippet"
@@ -61,7 +56,7 @@ spec = do
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "ExampleModule"
             it "has an empty body" $
-                result `shouldSatisfy` is (_Right._Empty) . fmap decls
+                body result `shouldSatisfy` is _Empty
 
     -- Signatures
 
@@ -77,9 +72,11 @@ spec = do
                 . concatMap (view (_FnDecl._3))
                 . view (_Right._AstSignature._3)
 
+            decls :: ParsedAst s -> [Decl s]
+            decls = view (_Right._AstSignature._3)
+
             declsCount :: ParsedAst s -> Int
-            declsCount =
-                length . view (_Right._AstSignature._3)
+            declsCount = length . decls
 
         context "empty signature" $ do
             result <- parseFile "EmptySignature.whippet"
@@ -88,7 +85,7 @@ spec = do
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "ExampleSignature"
             it "has an empty body" $
-                result `shouldSatisfy` is (_Right._Empty) . fmap decls
+                decls result `shouldSatisfy` is _Empty
 
         context "signature with function decl" $ do
             result <- parseFile "SignatureWithFn.whippet"
