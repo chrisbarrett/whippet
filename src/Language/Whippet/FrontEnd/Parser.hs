@@ -25,7 +25,7 @@ ast = whiteSpace *> (module' <|> signature <|> astDecl)
 signature :: Parser (AST Span)
 signature = do
     reserved "signature"
-    AstSignature <$> typeName <*> braces decls
+    AstSignature <$> typeName <*> braces (many decl)
 
 module' :: Parser (AST Span)
 module' = do
@@ -33,8 +33,7 @@ module' = do
     AstModule <$> typeName <*> braces (many ast)
 
 astDecl :: Parser (AST Span)
-astDecl =
-    AstDecl <$> (typeDecl <|> recordDecl)
+astDecl = AstDecl <$> decl
 
 typeDecl :: Parser (Decl Span)
 typeDecl = do
@@ -83,8 +82,8 @@ field = do
     pure (Field span id ty)
 
 
-decls :: Parser [Decl Span]
-decls = many fnDecl
+decl :: Parser (Decl Span)
+decl = fnDecl <|> recordDecl <|> typeDecl
 
 fnDecl :: Parser (Decl Span)
 fnDecl = do
