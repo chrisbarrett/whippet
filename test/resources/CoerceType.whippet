@@ -1,1 +1,1 @@
-type Coerce source dest
+type Coerce source dest = Proxy

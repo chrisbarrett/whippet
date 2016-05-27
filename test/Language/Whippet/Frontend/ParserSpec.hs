@@ -22,19 +22,21 @@ type ParsedAst s = Either Doc (AST s)
 main :: IO ()
 main = hspec spec
 
-parseFile s = runIO $ do
-    file <- Paths.getDataFileName ("test/resources/" <> s)
-    content <- readFile file
+parseFile name = do
+    content <- runIO (loadResource name)
+    pure (resultToEither (parse content))
+  where
+    resultToEither :: Trifecta.Result (AST s) -> ParsedAst s
+    resultToEither (Trifecta.Success x) = Right x
+    resultToEither (Trifecta.Failure e) = Left ("\n" <> e)
 
-    -- KLUDGE: Use the 'parseByteString' function instead of 'parseFile' so the
-    -- path in the error reports are more legible.
-    let filename = FilePath.takeFileName file
-        delta = Trifecta.Directed (fromString filename) 0 0 0 0
-        res = Trifecta.parseByteString Parser.ast delta (fromString content)
+    loadResource name = do
+        realPath <- Paths.getDataFileName ("test/resources/" <> name)
+        readFile realPath
 
-    case res of
-      Trifecta.Success x -> pure (Right x)
-      Trifecta.Failure e -> pure (Left ("\n" <> e))
+    parse content =
+        let delta = Trifecta.Directed (fromString name) 0 0 0 0
+        in Trifecta.parseByteString Parser.ast delta (fromString content)
 
 astHasIdentifier :: Text -> ParsedAst s -> Bool
 astHasIdentifier s =
@@ -49,10 +51,14 @@ spec = do
         let body :: ParsedAst s -> [AST s]
             body = view (_Right._AstModule._2)
 
+            itParsesToModule :: ParsedAst s -> Spec
+            itParsesToModule result =
+                it "parses to a module" $
+                  result `shouldSatisfy` is (_Right._AstModule)
+
         context "empty module" $ do
             result <- parseFile "EmptyModule.whippet"
-            it "returns a module" $
-                result `shouldSatisfy` is (_Right._AstModule)
+            itParsesToModule result
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "ExampleModule"
             it "has an empty body" $
@@ -78,10 +84,14 @@ spec = do
             declsCount :: ParsedAst s -> Int
             declsCount = length . decls
 
+            itParsesToSignature :: ParsedAst s -> Spec
+            itParsesToSignature result =
+                it "parses to a signature" $
+                  result `shouldSatisfy` is (_Right._AstSignature)
+
         context "empty signature" $ do
             result <- parseFile "EmptySignature.whippet"
-            it "returns a signature" $
-                result `shouldSatisfy` is (_Right._AstSignature)
+            itParsesToSignature result
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "ExampleSignature"
             it "has an empty body" $
@@ -89,6 +99,7 @@ spec = do
 
         context "signature with function decl" $ do
             result <- parseFile "SignatureWithFn.whippet"
+            itParsesToSignature result
             it "has the expected fn name" $
                 identifiers result `shouldBe` ["foo"]
             it "has one inner declaration" $
@@ -98,6 +109,7 @@ spec = do
 
         context "signature with abstract type" $ do
             result <- parseFile "SignatureWithAbsType.whippet"
+            itParsesToSignature result
             it "has the expected type name" $
                 identifiers result `shouldBe` ["T"]
 
@@ -114,10 +126,14 @@ spec = do
             fieldTypeNames =
                 fmap (view (fieldType.typeIdentifier._Just.text)) . fieldsFromAst
 
+            itParsesToRecordDecl :: ParsedAst s -> Spec
+            itParsesToRecordDecl result =
+                it "parses to a record decl" $
+                    result `shouldSatisfy` is (_Right._AstDecl._DecRecordType)
+
         context "record type" $ do
             result <- parseFile "IntPair.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstDecl._DecRecordType)
+            itParsesToRecordDecl result
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "IntPair"
             it "has the expected fields" $
@@ -127,6 +143,7 @@ spec = do
 
         context "record type with type parameters" $ do
             result <- parseFile "Pair.whippet"
+            itParsesToRecordDecl result
             it "has the expected fields" $
                 fieldLabels result `shouldBe` ["fst", "snd"]
             it "has the expected field types" $
@@ -134,12 +151,9 @@ spec = do
 
         context "record type with comma before first field" $ do
             result <- parseFile "RecordOptionalLeadingComma.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstDecl._DecRecordType)
+            itParsesToRecordDecl result
             it "has the expected fields" $
                 fieldLabels result `shouldBe` ["fst", "snd"]
-
-
 
     describe "parsing a type declaration" $ do
         let ctorsFromAst :: ParsedAst s -> [Ctor s]
@@ -155,27 +169,32 @@ spec = do
             ctorLabels =
                 fmap (view (identifier.text)) . ctorsFromAst
 
-
-            absTypeParams :: ParsedAst s -> [Text]
-            absTypeParams =
-                fmap (view (identifier.text)) . view (_Right._AstDecl._DecAbsType._3)
-
             ctorParamTypes :: ParsedAst s -> [Text]
             ctorParamTypes =
                 fmap (view (typeIdentifier._Just.text))
                 . concatMap (view ctorParams)
                 . ctorsFromAst
 
+            itParsesToTypeDecl :: ParsedAst s -> Spec
+            itParsesToTypeDecl result =
+                it "parses to a type decl" $
+                    result `shouldSatisfy` is (_Right._AstDecl._DecDataType)
+
+            itParsesToAbsTypeDecl :: ParsedAst s -> Spec
+            itParsesToAbsTypeDecl result =
+                it "parses to a type decl" $
+                    result `shouldSatisfy` is (_Right._AstDecl._DecAbsType)
+
 
         context "abstract type" $ do
             result <- parseFile "Void.whippet"
-            it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstDecl._DecAbsType)
+            itParsesToAbsTypeDecl result
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "Void"
 
         context "nullary constructor" $ do
             result <- parseFile "Unit.whippet"
+            itParsesToTypeDecl result
             it "has the expected constructor" $
                 ctorLabels result `shouldBe` ["Unit"]
             it "has no parameters" $
@@ -183,6 +202,7 @@ spec = do
 
         context "multiple nullary constructors" $ do
             result <- parseFile "Bool.whippet"
+            itParsesToTypeDecl result
             it "has the expected constructors" $
                 ctorLabels result `shouldBe` ["True", "False"]
             it "has no parameters" $
@@ -190,20 +210,24 @@ spec = do
 
         context "first constructor has a leading pipe" $ do
             result <- parseFile "CtorOptionalPipe.whippet"
+            itParsesToTypeDecl result
             it "has the expected constructors" $
                 ctorLabels result `shouldBe` ["True", "False"]
 
         context "single type parameter" $ do
             result <- parseFile "PhantomType.whippet"
+            itParsesToTypeDecl result
             it "has the expected type parameter" $
                 typeParameters result `shouldBe` ["a"]
 
         context "multiple type parameters" $ do
             result <- parseFile "CoerceType.whippet"
+            itParsesToTypeDecl result
             it "has the expected type parameters" $
-                absTypeParams result `shouldBe` ["source", "dest"]
+                typeParameters result `shouldBe` ["source", "dest"]
 
         context "constructor reference to type parameters" $ do
             result <- parseFile "Either.whippet"
+            itParsesToTypeDecl result
             it "has the expected ctor parameter types" $
                 ctorParamTypes result `shouldBe` ["e", "a"]
