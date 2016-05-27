@@ -12,7 +12,7 @@ import qualified Data.Text                     as Text
 import           Language.Whippet.Frontend.AST
 import           Text.Parser.Token.Style
 import           Text.Trifecta
-import           Text.Trifecta.Delta           (Delta)
+import qualified Text.Trifecta                 as Trifecta
 
 -- * Parser definitions
 
@@ -71,21 +71,39 @@ constructor = do
   where
     parser = do
         ident <- typeName
-        ps <- many type'
+        ps <- many typeRef
         pure (ident, ps)
 
 
 field :: Parser (Field Span)
 field = do
     let parser = (,) <$> (identifier' <?> "field name")
-                     <*> (colon *> type')
+                     <*> (colon *> typeRef)
     ((id, ty) :~ span) <- spanned parser
     pure (Field span id ty)
 
 
 decls :: Parser [Decl Span]
-decls = pure []
+decls = many fnDecl
 
+fnDecl :: Parser (Decl Span)
+fnDecl = do
+    s <- position
+    ln <- line
+    let mkSpan end = Span s end ln
+
+    reserved "let"
+    ident <- identifier'
+    colon
+    parameters <- typeRef `sepBy1` arrow
+    span <- mkSpan <$> position
+    pure (FnDecl span ident parameters)
+    <?> "let declaration"
+
+arrow :: Parser ()
+arrow = do
+    token (string "->")
+    pure ()
 
 recordDecl :: Parser (AST Span)
 recordDecl = do
@@ -102,8 +120,8 @@ recordDecl = do
     pure (AstRecordType s ident tyArgs flds)
 
 
-type' :: Parser (Type Span)
-type' = do
+typeRef :: Parser (Type Span)
+typeRef = do
     start <- position
     ln <- line
     let mkSpan = \end -> Span start end ln
@@ -151,7 +169,7 @@ tokenLike f p = do
 style :: IdentifierStyle Parser
 style = emptyIdents {_styleReserved = reservedChars}
   where
-    reservedChars = ["module", "signature", "type", "record"]
+    reservedChars = ["module", "signature", "type", "record", "let"]
 
 reserved :: String -> Parser ()
 reserved = reserve style
