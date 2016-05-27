@@ -1,4 +1,4 @@
-module Language.Whippet.Frontend.AST.HasSrcPos where
+module Language.Whippet.Frontend.AST.HasPos where
 
 import           Control.Lens                         (Lens', lens)
 import           Language.Whippet.Frontend.AST.Lenses
