@@ -66,16 +66,37 @@ instance Show (TypeParameter s) where
 
 -- * Declarations
 
-data Decl s = FnDecl s (Ident s) [Type s]
+data Decl s
+    = DecFn         s (Ident s) [Type s]
+    | DecAbsType    s (Ident s) [TypeParameter s]
+    | DecDataType   s (Ident s) [TypeParameter s] [Ctor s]
+    | DecRecordType s (Ident s) [TypeParameter s] [Field s]
     deriving (Eq, Ord)
 
 instance Show (Decl s) where
-  show (FnDecl _ i ts) =
-      showRecord "FnDecl"
+  show (DecFn _ i ts) =
+      showRecord "DecFn"
           [ ("id", show i)
           , ("types", show ts)
           ]
+  show (DecAbsType _ i ps) =
+      showRecord "DecAbsType"
+          [ ("id", show i)
+          , ("params", show ps)
+          ]
 
+  show (DecDataType _ i t cs) =
+      showRecord "DecDataType"
+          [ ("id", show i)
+          , ("params", show t)
+          , ("ctors", show cs)
+          ]
+  show (DecRecordType _ i t fs) =
+      showRecord "DecRecordType"
+          [ ("id", show i)
+          , ("params", show t)
+          , ("fields", show fs)
+          ]
 
 -- * Constructors
 
@@ -97,38 +118,22 @@ instance Show (Ctor s) where
 -- * Top-level declarations
 
 data AST s
-    = AstModule       s (Ident s) [AST s]
-    | AstSignature    s (Ident s) [Decl s]
-    | AstAbstractType s (Ident s) [TypeParameter s]
-    | AstDataType     s (Ident s) [TypeParameter s] [Ctor s]
-    | AstRecordType   s (Ident s) [TypeParameter s] [Field s]
+    = AstModule    (Ident s) [AST s]
+    | AstSignature (Ident s) [Decl s]
+    | AstDecl      (Decl s)
     deriving (Eq, Ord)
 
 instance Show (AST s) where
-  show (AstModule _ i ds) =
+  show (AstModule i ds) =
       showRecord "AstModule"
           [ ("id", show i)
           , ("decls", show ds)
           ]
-  show (AstSignature _ i ds) =
+  show (AstSignature i ds) =
       showRecord "AstSignature"
           [ ("id", show i)
           , ("decls", show ds)
           ]
-  show (AstAbstractType _ i t) =
-      showRecord "AstAbstractType"
-          [ ("id", show i)
-          , ("params", show t)
-          ]
-  show (AstDataType _ i t cs) =
-      showRecord "AstDataType"
-          [ ("id", show i)
-          , ("params", show t)
-          , ("ctors", show cs)
-          ]
-  show (AstRecordType _ i t fs) =
-      showRecord "AstRecordType"
-          [ ("id", show i)
-          , ("params", show t)
-          , ("fields", show fs)
-          ]
+  show (AstDecl ds) =
+      showRecord "AstDecl"
+          [("decls", show ds)]

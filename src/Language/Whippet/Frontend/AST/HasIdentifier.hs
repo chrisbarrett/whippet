@@ -36,25 +36,27 @@ instance HasIdentifier AST where
         lens get set
       where
         get :: AST s -> Ident s
-        get (AstModule _ i _)       = i
-        get (AstSignature _ i _)    = i
-        get (AstAbstractType _ i _) = i
-        get (AstDataType _ i _ _)   = i
-        get (AstRecordType _ i _ _) = i
+        get (AstModule i _)    = i
+        get (AstSignature i _) = i
+        get (AstDecl d)        = d^.identifier
 
         set :: AST s -> Ident s -> AST s
-        set (AstModule p _ x)       i = AstModule p i x
-        set (AstSignature p _ x)    i = AstSignature p i x
-        set (AstAbstractType p _ x) i = AstAbstractType p i x
-        set (AstDataType p _ x y)   i = AstDataType p i x y
-        set (AstRecordType p _ x y) i = AstRecordType p i x y
+        set (AstModule _ x)    i = AstModule i x
+        set (AstSignature _ x) i = AstSignature i x
+        set (AstDecl d)        i = AstDecl (d & identifier .~ i)
 
 instance HasIdentifier Decl where
     identifier =
         lens get set
       where
         get :: Decl s -> Ident s
-        get (FnDecl _ i _)       = i
+        get (DecFn _ i _)       = i
+        get (DecAbsType _ i _) = i
+        get (DecDataType _ i _ _)   = i
+        get (DecRecordType _ i _ _) = i
 
         set :: Decl s -> Ident s -> Decl s
-        set (FnDecl p _ xs)       i = FnDecl p i xs
+        set (DecFn p _ xs)       i    = DecFn p i xs
+        set (DecAbsType p _ x) i      = DecAbsType p i x
+        set (DecDataType p _ x y)   i = DecDataType p i x y
+        set (DecRecordType p _ x y) i = DecRecordType p i x y

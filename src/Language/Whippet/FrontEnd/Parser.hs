@@ -20,31 +20,23 @@ parseFile :: MonadIO m => FilePath -> m (Result (AST Span))
 parseFile = parseFromFileEx ast
 
 ast :: Parser (AST Span)
-ast = whiteSpace *> (module' <|> signature <|> typeDecl <|> recordDecl)
+ast = whiteSpace *> (module' <|> signature <|> astDecl)
 
 signature :: Parser (AST Span)
 signature = do
-    ((id, ds) :~ span) <- spanned parser
-    pure (AstSignature span id ds)
-  where
-    parser = do
-        reserved "signature"
-        ty <- typeName
-        body <- braces decls
-        pure (ty, body)
+    reserved "signature"
+    AstSignature <$> typeName <*> braces decls
 
 module' :: Parser (AST Span)
 module' = do
-    ((id, ds) :~ span) <- spanned parser
-    pure (AstModule span id ds)
-  where
-    parser = do
-        reserved "module"
-        ty <- typeName
-        body <- braces (many ast)
-        pure (ty, body)
+    reserved "module"
+    AstModule <$> typeName <*> braces (many ast)
 
-typeDecl :: Parser (AST Span)
+astDecl :: Parser (AST Span)
+astDecl =
+    AstDecl <$> (typeDecl <|> recordDecl)
+
+typeDecl :: Parser (Decl Span)
 typeDecl = do
     s <- position
     l <- line
@@ -64,12 +56,12 @@ typeDecl = do
         cs <- optional pipe *> constructor `sepBy1` pipe
         end <- position
         let span = Span start end ln
-        pure (AstDataType span ident tyArgs cs)
+        pure (DecDataType span ident tyArgs cs)
 
     abstractType (start, ln) ident tyArgs = do
         end <- position
         let span = Span start end ln
-        pure (AstAbstractType span ident tyArgs)
+        pure (DecAbsType span ident tyArgs)
 
 
 constructor :: Parser (Ctor Span)
@@ -105,7 +97,7 @@ fnDecl = do
     colon
     parameters <- typeRef `sepBy1` arrow
     span <- mkSpan <$> position
-    pure (FnDecl span ident parameters)
+    pure (DecFn span ident parameters)
     <?> "let declaration"
 
 arrow :: Parser ()
@@ -113,7 +105,7 @@ arrow = do
     token (string "->")
     pure ()
 
-recordDecl :: Parser (AST Span)
+recordDecl :: Parser (Decl Span)
 recordDecl = do
     s <- position
     ln <- line
@@ -125,7 +117,7 @@ recordDecl = do
     equals
     flds <- recordFields
     s <- mkSpan <$> position
-    pure (AstRecordType s ident tyArgs flds)
+    pure (DecRecordType s ident tyArgs flds)
 
 
 typeRef :: Parser (Type Span)

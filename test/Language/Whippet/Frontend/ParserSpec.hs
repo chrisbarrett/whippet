@@ -47,7 +47,7 @@ spec = do
 
     describe "parsing modules" $ do
         let body :: ParsedAst s -> [AST s]
-            body = view (_Right._AstModule._3)
+            body = view (_Right._AstModule._2)
 
         context "empty module" $ do
             result <- parseFile "EmptyModule.whippet"
@@ -64,16 +64,16 @@ spec = do
 
         let identifiers :: ParsedAst s -> [Text]
             identifiers =
-                fmap (view (identifier.text)) . view (_Right._AstSignature._3)
+                fmap (view (identifier.text)) . view (_Right._AstSignature._2)
 
             parameters :: ParsedAst s -> [Text]
             parameters =
                 fmap (view (_TyNominal._2.text))
-                . concatMap (view (_FnDecl._3))
-                . view (_Right._AstSignature._3)
+                . concatMap (view (_DecFn._3))
+                . view (_Right._AstSignature._2)
 
             decls :: ParsedAst s -> [Decl s]
-            decls = view (_Right._AstSignature._3)
+            decls = view (_Right._AstSignature._2)
 
             declsCount :: ParsedAst s -> Int
             declsCount = length . decls
@@ -101,7 +101,7 @@ spec = do
     describe "parsing a record declaration" $ do
         let fieldsFromAst :: ParsedAst s -> [Field s]
             fieldsFromAst =
-                view (_Right._AstRecordType._4)
+                view (_Right._AstDecl._DecRecordType._4)
 
             fieldLabels =
                 fmap (view (identifier.text)) . fieldsFromAst
@@ -112,7 +112,7 @@ spec = do
         context "record type" $ do
             result <- parseFile "IntPair.whippet"
             it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstRecordType)
+                result `shouldSatisfy` is (_Right._AstDecl._DecRecordType)
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "IntPair"
             it "has the expected fields" $
@@ -130,7 +130,7 @@ spec = do
         context "record type with comma before first field" $ do
             result <- parseFile "RecordOptionalLeadingComma.whippet"
             it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstRecordType)
+                result `shouldSatisfy` is (_Right._AstDecl._DecRecordType)
             it "has the expected fields" $
                 fieldLabels result `shouldBe` ["fst", "snd"]
 
@@ -139,11 +139,12 @@ spec = do
     describe "parsing a type declaration" $ do
         let ctorsFromAst :: ParsedAst s -> [Ctor s]
             ctorsFromAst =
-                view (_Right._AstDataType._4)
+                view (_Right._AstDecl._DecDataType._4)
 
             typeParameters :: ParsedAst s -> [Text]
             typeParameters =
-                fmap (view (identifier.text)) . view (_Right._AstDataType._3)
+                fmap (view (identifier.text))
+                . view (_Right._AstDecl._DecDataType._3)
 
             ctorLabels :: ParsedAst s -> [Text]
             ctorLabels =
@@ -152,7 +153,7 @@ spec = do
 
             absTypeParams :: ParsedAst s -> [Text]
             absTypeParams =
-                fmap (view (identifier.text)) . view (_Right._AstAbstractType._3)
+                fmap (view (identifier.text)) . view (_Right._AstDecl._DecAbsType._3)
 
             ctorParamTypes :: ParsedAst s -> [Text]
             ctorParamTypes =
@@ -164,7 +165,7 @@ spec = do
         context "abstract type" $ do
             result <- parseFile "Void.whippet"
             it "returns a type declaration" $
-                result `shouldSatisfy` is (_Right._AstAbstractType)
+                result `shouldSatisfy` is (_Right._AstDecl._DecAbsType)
             it "has the expected identifier" $
                 result `shouldSatisfy` astHasIdentifier "Void"
 
