@@ -4,17 +4,14 @@ import           Control.Lens                         hiding (get, set)
 import           Language.Whippet.Frontend.AST.Lenses
 import           Language.Whippet.Frontend.AST.Types
 
-typeIdentifier :: Lens' (Type s) (Maybe (Ident s))
-typeIdentifier =
-    lens get set
+typeIdentifiers :: Getter (Type s) (Maybe [Ident s])
+typeIdentifiers =
+    to get
   where
-    get :: Type s -> Maybe (Ident s)
-    get (TyNominal _ i) = Just i
-    get TyStructural {} = Nothing
-
-    set :: Type s -> Maybe (Ident s) -> Type s
-    set t@(TyNominal p _) i = maybe t (TyNominal p) i
-    set t@TyStructural {} _ = t
+    get :: Type s -> Maybe [Ident s]
+    get (TyNominal _ i _) = Just [i]
+    get TyStructural {}   = Nothing
+    get (TyFun _ xs) = fmap concat (mapM (view typeIdentifiers) xs)
 
 class HasIdentifier a where
     identifier :: Lens' (a s) (Ident s)
@@ -50,13 +47,13 @@ instance HasIdentifier Decl where
         lens get set
       where
         get :: Decl s -> Ident s
-        get (DecFn _ i _)       = i
-        get (DecAbsType _ i _) = i
+        get (DecFun _ i _)          = i
+        get (DecAbsType _ i _)      = i
         get (DecDataType _ i _ _)   = i
         get (DecRecordType _ i _ _) = i
 
         set :: Decl s -> Ident s -> Decl s
-        set (DecFn p _ xs)       i    = DecFn p i xs
-        set (DecAbsType p _ x) i      = DecAbsType p i x
+        set (DecFun p _ xs)         i    = DecFun p i xs
+        set (DecAbsType p _ x)      i      = DecAbsType p i x
         set (DecDataType p _ x y)   i = DecDataType p i x y
         set (DecRecordType p _ x y) i = DecRecordType p i x y

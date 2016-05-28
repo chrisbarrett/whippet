@@ -1,0 +1,1 @@
+let getOpt : a -> Option a -> a

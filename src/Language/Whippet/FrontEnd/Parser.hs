@@ -11,7 +11,7 @@ import           Data.Text                     (Text)
 import qualified Data.Text                     as Text
 import           Language.Whippet.Frontend.AST
 import           Text.Parser.Token.Style
-import           Text.Trifecta
+import           Text.Trifecta                 hiding (ident)
 import qualified Text.Trifecta                 as Trifecta
 
 -- * Parser definitions
@@ -25,12 +25,12 @@ ast = whiteSpace *> (module' <|> signature <|> astDecl)
 signature :: Parser (AST Span)
 signature = do
     reserved "signature"
-    AstSignature <$> typeName <*> braces (many decl)
+    AstSignature <$> ident <*> braces (many decl)
 
 module' :: Parser (AST Span)
 module' = do
     reserved "module"
-    AstModule <$> typeName <*> braces (many ast)
+    AstModule <$> ident <*> braces (many ast)
 
 astDecl :: Parser (AST Span)
 astDecl = AstDecl <$> decl
@@ -42,25 +42,25 @@ typeDecl = do
     let pos = (s, l)
 
     reserved "type"
-    ident <- typeName
+    id <- ident
     tyArgs <- many typeParameter
 
     eq <- optional equals
     case eq of
-      Just _  -> concreteType pos ident tyArgs
-      Nothing -> abstractType pos ident tyArgs
+      Just _  -> concreteType pos id tyArgs
+      Nothing -> abstractType pos id tyArgs
 
   where
-    concreteType (start, ln) ident tyArgs = do
+    concreteType (start, ln) id tyArgs = do
         cs <- optional pipe *> constructor `sepBy1` pipe
         end <- position
         let span = Span start end ln
-        pure (DecDataType span ident tyArgs cs)
+        pure (DecDataType span id tyArgs cs)
 
-    abstractType (start, ln) ident tyArgs = do
+    abstractType (start, ln) id tyArgs = do
         end <- position
         let span = Span start end ln
-        pure (DecAbsType span ident tyArgs)
+        pure (DecAbsType span id tyArgs)
 
 
 constructor :: Parser (Ctor Span)
@@ -69,14 +69,14 @@ constructor = do
     pure (Ctor span id ps)
   where
     parser = do
-        ident <- typeName
+        id <- ident
         ps <- many typeRef
-        pure (ident, ps)
+        pure (id, ps)
 
 
 field :: Parser (Field Span)
 field = do
-    let parser = (,) <$> (identifier' <?> "field name")
+    let parser = (,) <$> (ident <?> "field name")
                      <*> (colon *> typeRef)
     ((id, ty) :~ span) <- spanned parser
     pure (Field span id ty)
@@ -92,11 +92,11 @@ fnDecl = do
     let mkSpan end = Span s end ln
 
     reserved "let"
-    ident <- identifier'
+    id <- ident
     colon
     parameters <- typeRef `sepBy1` arrow
     span <- mkSpan <$> position
-    pure (DecFn span ident parameters)
+    pure (DecFun span id parameters)
     <?> "let declaration"
 
 arrow :: Parser ()
@@ -111,12 +111,12 @@ recordDecl = do
     let mkSpan end = Span s end ln
 
     reserved "record"
-    ident <- typeName
+    id <- ident
     tyArgs <- many typeParameter
     equals
     flds <- recordFields
     s <- mkSpan <$> position
-    pure (DecRecordType s ident tyArgs flds)
+    pure (DecRecordType s id tyArgs flds)
 
 
 typeRef :: Parser (Type Span)
@@ -124,12 +124,18 @@ typeRef = do
     start <- position
     ln <- line
     let mkSpan = \end -> Span start end ln
-    structuralType mkSpan <|> nominalType mkSpan
+    structuralType mkSpan <|> functionType mkSpan <|> nominalType mkSpan
   where
-    nominalType mkSpan = do
-        i <- token ((:) <$> letter <*> many (alphaNum <|> oneOf "_"))
+    functionType mkSpan = do
+        ps <- parens (typeRef `sepBy1` arrow)
         s <- mkSpan <$> position
-        pure (TyNominal s (Ident s (Text.pack i)))
+        pure (TyFun s ps)
+
+    nominalType mkSpan = do
+        i <- ident
+        ps <- many ident
+        s <- mkSpan <$> position
+        pure (TyNominal s i ps)
         <?> "type name"
 
     structuralType mkSpan = do
@@ -143,32 +149,24 @@ recordFields = braces (optional comma *> field `sepBy1` comma)
 -- * Token types
 
 typeParameter :: Parser (TypeParameter Span)
-typeParameter = do
-    TypeParameter <$> tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_"))
+typeParameter =
+    TypeParameter <$> ident
       <?> "type parameter"
-
-typeName :: Parser (Ident Span)
-typeName =
-    tokenLike Ident ((:) <$> upper <*> many (alphaNum <|> oneOf "_"))
-      <?> "type name"
-
-identifier' :: Parser (Ident Span)
-identifier' = do
-    tokenLike Ident ((:) <$> lower <*> many (alphaNum <|> oneOf "_-?"))
-      <?> "identifier"
-
-tokenLike :: (Span -> Text -> t) -> Parser String -> Parser t
-tokenLike f p = do
-    (id :~ span) <- spanned (token (Text.pack <$> p))
-    pure (f span id)
-
 
 -- * Helpers
 
 style :: IdentifierStyle Parser
-style = emptyIdents {_styleReserved = reservedChars}
+style = emptyIdents
+        & styleReserved .~ reservedWords
+        & styleStart .~ (letter <|> char '_')
+        & styleLetter .~ (alphaNum <|> oneOf "_?")
   where
-    reservedChars = ["module", "signature", "type", "record", "let"]
+    reservedWords = ["module", "signature", "type", "record", "let"]
+
+ident :: Parser (Ident Span)
+ident = do
+    (s :~ span) <- spanned (Trifecta.ident style)
+    pure (Ident span s)
 
 reserved :: String -> Parser ()
 reserved = reserve style

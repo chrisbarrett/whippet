@@ -46,14 +46,24 @@ instance Show (Field s) where
 -- * Type Identifiers
 
 data Type s
-    = TyNominal    s (Ident s)
+    = TyNominal    s (Ident s) [Ident s]
     | TyStructural s [Field s]
+    | TyFun        s [Type s]
     deriving (Eq, Ord)
 
-instance Show (Type s) where
-    show (TyNominal _ i)     = show i
-    show (TyStructural _ fs) = show fs
+tyToText :: Type s -> Text
 
+tyToText (TyNominal _ i ps) = Text.unwords (map _identLabel (i : ps))
+
+tyToText (TyStructural _ fs) = Text.pack (show fs)
+
+tyToText (TyFun _ ts) =
+    "(" <> format ts <> ")"
+  where
+    format = Text.intercalate " -> " . fmap tyToText
+
+instance Show (Type s) where
+    show = show . tyToText
 
 -- * Type Parameters
 
@@ -67,15 +77,15 @@ instance Show (TypeParameter s) where
 -- * Declarations
 
 data Decl s
-    = DecFn         s (Ident s) [Type s]
+    = DecFun        s (Ident s) [Type s]
     | DecAbsType    s (Ident s) [TypeParameter s]
     | DecDataType   s (Ident s) [TypeParameter s] [Ctor s]
     | DecRecordType s (Ident s) [TypeParameter s] [Field s]
     deriving (Eq, Ord)
 
 instance Show (Decl s) where
-  show (DecFn _ i ts) =
-      showRecord "DecFn"
+  show (DecFun _ i ts) =
+      showRecord "DecFun"
           [ ("id", show i)
           , ("types", show ts)
           ]

@@ -1,0 +1,4 @@
+signature SignatureWithMultipleFns {
+  let foo: A -> B
+  let bar: B -> C
+}
