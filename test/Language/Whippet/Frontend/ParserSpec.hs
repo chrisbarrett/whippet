@@ -311,3 +311,19 @@ spec = do
                     ident result `shouldBe` "map"
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "((a -> b) -> (List a -> List b))"
+
+        context "type signature with structural type as input" $ do
+            result <- parseFile "StructuralTypeParameterInput.whippet"
+            whenParsesToSigWithFn result $ do
+                it "has the expected identifier" $
+                    ident result `shouldBe` "first"
+                it "has the expected type parameters" $
+                    fnType result `shouldBe` "({fst: A, snd: B} -> A)"
+
+        context "type signature with structural type as output" $ do
+            result <- parseFile "StructuralTypeParameterOutput.whippet"
+            whenParsesToSigWithFn result $ do
+                it "has the expected identifier" $
+                    ident result `shouldBe` "box"
+                it "has the expected type parameters" $
+                    fnType result `shouldBe` "(A -> {unpack: A})"

@@ -7,9 +7,11 @@ import           Language.Whippet.Frontend.AST.Types
 
 typeIdentifiers :: Type s -> Maybe [Ident s]
 
-typeIdentifiers (TyNominal i _) = Just [i]
+typeIdentifiers (TyNominal i)   = Just [i]
+typeIdentifiers TyStructural {} = Nothing
 
-typeIdentifiers TyStructural {}   = Nothing
+typeIdentifiers (TyApp x y) =
+    concat <$> sequence [typeIdentifiers x, typeIdentifiers y]
 
 typeIdentifiers (TyFun a b) = do
     as <- typeIdentifiers a

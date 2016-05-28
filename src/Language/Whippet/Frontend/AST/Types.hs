@@ -34,26 +34,37 @@ data Field s = Field {
     }
     deriving (Eq, Ord)
 
-instance Show (Field s) where
-  show Field {..} =
-      showRecord "Field"
-          [ ("id", show _fieldIdent)
-          , ("type", show _fieldType)
-          ]
+fieldToText :: Field s -> Text
+fieldToText Field {..} =
+    ident <> ": " <> typeToText _fieldType
+  where
+    ident = _identLabel _fieldIdent
 
+instance Show (Field s) where
+  show = show . fieldToText
 
 -- * Type Identifiers
 
 data Type s
-    = TyNominal    (Ident s) [Type s]
+    = TyNominal    (Ident s)
     | TyStructural [Field s]
+    | TyApp        (Type s) (Type s)
     | TyFun        (Type s) (Type s)
     deriving (Eq, Ord)
 
 typeToText :: Type s -> Text
-typeToText (TyNominal i ps)  = Text.unwords (_identLabel i : map typeToText ps)
-typeToText (TyStructural fs) = Text.pack (show fs)
-typeToText (TyFun a b)       = "(" <> typeToText a <> " -> " <> typeToText b <> ")"
+
+typeToText (TyNominal i ) =
+    _identLabel i
+
+typeToText (TyApp x y) =
+    Text.unwords [typeToText x, typeToText y]
+
+typeToText (TyStructural fs) =
+    "{" <> Text.intercalate ", " (map fieldToText fs) <> "}"
+
+typeToText (TyFun a b) =
+    "(" <> typeToText a <> " -> " <> typeToText b <> ")"
 
 instance Show (Type s) where
     show = show . typeToText

@@ -7,11 +7,13 @@ import           Control.Lens
 import           Control.Monad.Trans           (MonadIO)
 import           Data.ByteString.Internal      as BSI
 import           Data.ByteString.Lazy          as BS
-import           Data.Monoid
+import qualified Data.Maybe                    as Maybe
+import           Data.Monoid                   ((<>))
 import           Data.String                   (fromString)
 import           Data.Text                     (Text)
 import qualified Data.Text                     as Text
 import           Language.Whippet.Frontend.AST
+import           Text.Parser.Expression
 import           Text.Parser.LookAhead         (lookAhead)
 import           Text.Parser.Token.Style
 import           Text.Trifecta                 hiding (ident)
@@ -47,18 +49,17 @@ astDecl = AstDecl <$> declaration
 
 decType :: Parser (Decl Span)
 decType = do
-    id <- reserved "type" *> ident
+    reserved "type"
+    id <- ident
     tyArgs <- many typeParameter
-    eq <- optional equals
-    case eq of
-      Just _  -> concreteType id tyArgs
-      Nothing -> abstractType id tyArgs
+    concreteType id tyArgs <|> abstractType id tyArgs
     <?> "type declaration"
 
   where
     concreteType id tyArgs = do
-        cs <- optional pipe *> constructor `sepBy1` pipe
-        pure (DecDataType id tyArgs cs)
+        equals
+        optional pipe
+        DecDataType id tyArgs <$> constructor `sepBy1` pipe
 
     abstractType id tyArgs = do
         pure (DecAbsType id tyArgs)
@@ -78,55 +79,41 @@ decFun :: Parser (Decl Span)
 decFun = do
     reserved "let"
     i <- ident
-    t <- colon *> typeRef
+    colon
+    t <- typeRef
     pure (DecFun i t)
     <?> "let"
 
 decRecord :: Parser (Decl Span)
 decRecord = do
-    i <- reserved "record" *> ident
+    reserved "record"
+    i <- ident
     ts <- many typeParameter
-    fs <- equals *> recordFields
+    equals
+    fs <- recordFields
     pure (DecRecordType i ts fs)
     <?> "record declaration"
 
 
 typeRef :: Parser (Type Span)
 typeRef = do
-    parens parser <|> parser
+    buildExpressionParser operators tyTerm
   where
-    parser = structuralType <|> nominalType
+    tyTerm =
+        parens typeRef <|> nominalType <|> structuralType
 
-    structuralType = do
-        p <- startPos
-        flds <- recordFields
-        next <- optional moreTyArgs
-        span <- spanFromStart p
-        let structType = TyStructural span flds
-        case next of
-          Just next -> pure (TyFun span structType next)
-          Nothing   -> pure structType
+    structuralType =
+        TyStructural <$> recordFields
+        <?> "structural type"
 
     nominalType = do
-        p <- startPos
-        id <- ident
-        ps <- many (nominalType <|> parser)
-        next <- optional moreTyArgs
-        span <- spanFromStart p
-        let tyNom = TyNominal span id ps
-        case next of
-          Just next -> pure (TyFun span tyNom next)
-          Nothing   -> pure tyNom
+        id <- ident <?> "type name"
+        pure (TyNominal id)
 
-    moreTyArgs = do
-        arrow
-        p <- startPos
-        cur <- typeRef
-        next <- optional moreTyArgs
-        span <- spanFromStart p
-        case next of
-          Just next -> pure (TyFun span cur next)
-          Nothing   -> pure cur
+    operators = [ [Infix (pure TyApp) AssocLeft]
+                , [Infix (rarrow *> pure TyFun) AssocRight]
+                ]
+
 
 recordFields :: Parser [Field Span]
 recordFields = braces (optional comma *> field `sepBy1` comma)
@@ -134,24 +121,20 @@ recordFields = braces (optional comma *> field `sepBy1` comma)
 field :: Parser (Field Span)
 field = do
     i <- ident <?> "field name"
-    t <- colon *> typeRef
+    colon
+    t <- typeRef
     pure (Field i t)
 
-
--- * Token types
-
 typeParameter :: Parser (TypeParameter Span)
-typeParameter =
-    TypeParameter <$> ident
-      <?> "type parameter"
+typeParameter = TypeParameter <$> ident <?> "type parameter"
 
 -- * Helpers
 
-style :: IdentifierStyle Parser
+style :: Trifecta.IdentifierStyle Parser
 style = emptyIdents
         & styleReserved .~ reservedWords
-        & styleStart .~ (letter <|> char '_')
-        & styleLetter .~ (alphaNum <|> oneOf "_?")
+        & styleStart    .~ (letter <|> char '_')
+        & styleLetter   .~ (alphaNum <|> oneOf "_?")
   where
     reservedWords = ["module", "astSignature", "type", "record", "let"]
 
@@ -161,7 +144,7 @@ ident = do
     pure (Ident span s)
 
 reserved :: String -> Parser ()
-reserved = reserve style
+reserved s = reserve style s <?> s
 
 pipe :: Parser ()
 pipe = reserved "|"
@@ -169,20 +152,5 @@ pipe = reserved "|"
 equals :: Parser ()
 equals = reserved "="
 
-arrow :: Parser ()
-arrow = reserved "->"
-
--- * Source position utilities
-
-data Start = Start Trifecta.Delta BSI.ByteString
-
-startPos :: DeltaParsing m => m Start
-startPos = do
-    p <- position
-    l <- line
-    pure (Start p l)
-
-spanFromStart :: DeltaParsing m => Start -> m Span
-spanFromStart (Start s l) = do
-    e <- position
-    pure (Span s e l)
+rarrow :: Parser ()
+rarrow = reserved "->"

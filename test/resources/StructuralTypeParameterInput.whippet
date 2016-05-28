@@ -1,0 +1,1 @@
+let first: {fst: A, snd: B} -> A
