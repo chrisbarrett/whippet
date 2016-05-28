@@ -74,10 +74,9 @@ spec = do
             identifiers =
                 fmap (view (identifier.text)) . view (_Right._AstSignature._2)
 
-            parameters :: ParsedAst s -> [[Text]]
-            parameters =
-                (fmap.fmap) (view (_TyNominal._2.text))
-                . fmap (view (_DecFun._3))
+            types :: ParsedAst s -> [Text]
+            types =
+                fmap (view (_DecFun._3.to typeToText))
                 . view (_Right._AstSignature._2)
 
             decls :: ParsedAst s -> [Decl s]
@@ -106,8 +105,8 @@ spec = do
                 identifiers result `shouldBe` ["foo"]
             it "has one inner declaration" $
                 declsCount result `shouldBe` 1
-            it "has the expected parameters" $
-                parameters result `shouldBe` [["A", "B"]]
+            it "has the expected types" $
+                types result `shouldBe` ["(A -> B)"]
 
         context "signature with multiple function decls" $ do
             result <- parseFile Parser.ast "SignatureWithMultipleFns.whippet"
@@ -116,10 +115,8 @@ spec = do
                 declsCount result `shouldBe` 2
             it "has the expected fn names" $
                 identifiers result `shouldBe` ["foo", "bar"]
-            it "has the expected parameters" $
-                parameters result `shouldBe` [ ["A", "B"]
-                                             , ["B", "C"]
-                                             ]
+            it "has the expected types" $
+                types result `shouldBe` ["(A -> B)", "(B -> C)"]
 
         context "signature with abstract type" $ do
             result <- parseFile Parser.ast "SignatureWithAbsType.whippet"
@@ -255,43 +252,59 @@ spec = do
         let ident :: ParsedAst s -> Text
             ident = view (_Right._AstDecl._DecFun._2.identifier.text)
 
-            tyParameters :: ParsedAst s -> [Text]
-            tyParameters =
-                fmap tyToText . view (_Right._AstDecl._DecFun._3)
+            fnType :: ParsedAst s -> Text
+            fnType =
+                view (_Right._AstDecl._DecFun._3.to typeToText)
 
             itParsesToFnSig :: ParsedAst s -> Spec
             itParsesToFnSig result =
                 it "parses to a function signature" $
                     result `shouldSatisfy` is (_Right._AstDecl._DecFun)
 
-        context "simple function decl" $ do
+        context "unary type signature" $ do
+            result <- parseFile Parser.ast "UnitFunSig.whippet"
+            itParsesToFnSig result
+            it "has the expected identifier" $
+                ident result `shouldBe` "unit"
+            it "has the expected type parameters" $
+                fnType result `shouldBe` "Unit"
+
+        context "binary type signature" $ do
             result <- parseFile Parser.ast "IdentityFunSig.whippet"
             itParsesToFnSig result
             it "has the expected identifier" $
                 ident result `shouldBe` "identity"
             it "has the expected type parameters" $
-                tyParameters result `shouldBe` ["a", "a"]
+                fnType result `shouldBe` "(a -> a)"
 
-        context "function decl with type constructor parameter" $ do
-            result <- parseFile Parser.ast "FunctionTyCtor.whippet"
+        context "ternary type signature" $ do
+            result <- parseFile Parser.ast "ConstFunSig.whippet"
             itParsesToFnSig result
             it "has the expected identifier" $
-                ident result `shouldBe` "getOpt"
+                ident result `shouldBe` "const"
             it "has the expected type parameters" $
-                tyParameters result `shouldBe` ["a", "Option a", "a"]
+                fnType result `shouldBe` "(a -> (b -> a))"
 
-        context "function decl with function type parameter" $ do
-            result <- parseFile Parser.ast "ListMapFun.whippet"
-            itParsesToFnSig result
-            it "has the expected identifier" $
-                ident result `shouldBe` "map"
-            it "has the expected type parameters" $
-                tyParameters result `shouldBe` ["(a -> b)", "List a", "List b"]
-
-        context "function decl with paranthesised identifier" $ do
+        context "type signature with paranthesised identifier" $ do
             result <- parseFile Parser.ast "FunctionTyParens.whippet"
             itParsesToFnSig result
             it "has the expected identifier" $
                 ident result `shouldBe` "const"
             it "has the expected type parameters" $
-                tyParameters result `shouldBe` ["a", "b", "a"]
+                fnType result `shouldBe` "(a -> (b -> a))"
+
+        context "type signature with type constructor parameter" $ do
+            result <- parseFile Parser.ast "FunctionTyCtor.whippet"
+            itParsesToFnSig result
+            it "has the expected identifier" $
+                ident result `shouldBe` "getOpt"
+            it "has the expected type parameters" $
+                fnType result `shouldBe` "(a -> (Option a -> a))"
+
+        context "type signature with function type parameter" $ do
+            result <- parseFile Parser.ast "ListMapFun.whippet"
+            itParsesToFnSig result
+            it "has the expected identifier" $
+                ident result `shouldBe` "map"
+            it "has the expected type parameters" $
+                fnType result `shouldBe` "((a -> b) -> (List a -> List b))"

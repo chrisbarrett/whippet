@@ -22,6 +22,7 @@ library
                      , Language.Whippet.Frontend.AST.HasPos
                      , Language.Whippet.Frontend.Parser
   build-depends:       base >= 4.7 && < 5
+                     , bytestring
                      , lens
                      , mtl
                      , parsers
