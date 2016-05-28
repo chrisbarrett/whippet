@@ -47,33 +47,28 @@ astDecl = AstDecl <$> declaration
 
 decType :: Parser (Decl Span)
 decType = do
-    p <- startPos
     id <- reserved "type" *> ident
     tyArgs <- many typeParameter
     eq <- optional equals
     case eq of
-      Just _  -> concreteType p id tyArgs
-      Nothing -> abstractType p id tyArgs
+      Just _  -> concreteType id tyArgs
+      Nothing -> abstractType id tyArgs
     <?> "type declaration"
 
   where
-    concreteType p id tyArgs = do
+    concreteType id tyArgs = do
         cs <- optional pipe *> constructor `sepBy1` pipe
-        span <- spanFromStart p
-        pure (DecDataType span id tyArgs cs)
+        pure (DecDataType id tyArgs cs)
 
-    abstractType p id tyArgs = do
-        span <- spanFromStart p
-        pure (DecAbsType span id tyArgs)
+    abstractType id tyArgs = do
+        pure (DecAbsType id tyArgs)
 
 
 constructor :: Parser (Ctor Span)
 constructor = do
-    p <- startPos
     i <- ident
     ts <- many typeRef
-    span <- spanFromStart p
-    pure (Ctor span i ts)
+    pure (Ctor i ts)
     <?> "constructor"
 
 declaration :: Parser (Decl Span)
@@ -81,22 +76,18 @@ declaration = decFun <|> decRecord <|> decType
 
 decFun :: Parser (Decl Span)
 decFun = do
-    p <- startPos
     reserved "let"
     i <- ident
     t <- colon *> typeRef
-    span <- spanFromStart p
-    pure (DecFun span i t)
+    pure (DecFun i t)
     <?> "let"
 
 decRecord :: Parser (Decl Span)
 decRecord = do
-    p <- startPos
     i <- reserved "record" *> ident
     ts <- many typeParameter
     fs <- equals *> recordFields
-    span <- spanFromStart p
-    pure (DecRecordType span i ts fs)
+    pure (DecRecordType i ts fs)
     <?> "record declaration"
 
 
@@ -142,11 +133,9 @@ recordFields = braces (optional comma *> field `sepBy1` comma)
 
 field :: Parser (Field Span)
 field = do
-    p <- startPos
     i <- ident <?> "field name"
     t <- colon *> typeRef
-    span <- spanFromStart p
-    pure (Field span i t)
+    pure (Field i t)
 
 
 -- * Token types

@@ -29,8 +29,7 @@ instance Show (Ident s) where
 -- * Record Fields
 
 data Field s = Field {
-      _fieldSpan  :: s
-    , _fieldIdent :: Ident s
+      _fieldIdent :: Ident s
     , _fieldType  :: Type s
     }
     deriving (Eq, Ord)
@@ -46,19 +45,15 @@ instance Show (Field s) where
 -- * Type Identifiers
 
 data Type s
-    = TyNominal    s (Ident s) [Type s]
-    | TyStructural s [Field s]
-    | TyFun        s (Type s) (Type s)
+    = TyNominal    (Ident s) [Type s]
+    | TyStructural [Field s]
+    | TyFun        (Type s) (Type s)
     deriving (Eq, Ord)
 
 typeToText :: Type s -> Text
-
-typeToText (TyNominal _ i ps) = Text.unwords (_identLabel i : map typeToText ps)
-
-typeToText (TyStructural _ fs) = Text.pack (show fs)
-
-typeToText (TyFun _ a b) =
-    "(" <> typeToText a <> " -> " <> typeToText b <> ")"
+typeToText (TyNominal i ps)  = Text.unwords (_identLabel i : map typeToText ps)
+typeToText (TyStructural fs) = Text.pack (show fs)
+typeToText (TyFun a b)       = "(" <> typeToText a <> " -> " <> typeToText b <> ")"
 
 instance Show (Type s) where
     show = show . typeToText
@@ -75,31 +70,31 @@ instance Show (TypeParameter s) where
 -- * Declarations
 
 data Decl s
-    = DecFun        s (Ident s) (Type s)
-    | DecAbsType    s (Ident s) [TypeParameter s]
-    | DecDataType   s (Ident s) [TypeParameter s] [Ctor s]
-    | DecRecordType s (Ident s) [TypeParameter s] [Field s]
+    = DecFun        (Ident s) (Type s)
+    | DecAbsType    (Ident s) [TypeParameter s]
+    | DecDataType   (Ident s) [TypeParameter s] [Ctor s]
+    | DecRecordType (Ident s) [TypeParameter s] [Field s]
     deriving (Eq, Ord)
 
 instance Show (Decl s) where
-  show (DecFun _ i t) =
+  show (DecFun i t) =
       showRecord "DecFun"
           [ ("id", show i)
           , ("type", show t)
           ]
-  show (DecAbsType _ i ps) =
+  show (DecAbsType i ps) =
       showRecord "DecAbsType"
           [ ("id", show i)
           , ("params", show ps)
           ]
 
-  show (DecDataType _ i t cs) =
+  show (DecDataType i t cs) =
       showRecord "DecDataType"
           [ ("id", show i)
           , ("params", show t)
           , ("ctors", show cs)
           ]
-  show (DecRecordType _ i t fs) =
+  show (DecRecordType i t fs) =
       showRecord "DecRecordType"
           [ ("id", show i)
           , ("params", show t)
@@ -109,8 +104,7 @@ instance Show (Decl s) where
 -- * Constructors
 
 data Ctor s = Ctor {
-      _ctorSpan   :: s
-    , _ctorIdent  :: Ident s
+      _ctorIdent  :: Ident s
     , _ctorParams :: [Type s]
     }
     deriving (Eq, Ord)

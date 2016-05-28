@@ -7,11 +7,11 @@ import           Language.Whippet.Frontend.AST.Types
 
 typeIdentifiers :: Type s -> Maybe [Ident s]
 
-typeIdentifiers (TyNominal _ i _) = Just [i]
+typeIdentifiers (TyNominal i _) = Just [i]
 
 typeIdentifiers TyStructural {}   = Nothing
 
-typeIdentifiers (TyFun _ a b) = do
+typeIdentifiers (TyFun a b) = do
     as <- typeIdentifiers a
     bs <- typeIdentifiers b
     pure (as <> bs)
@@ -50,13 +50,13 @@ instance HasIdentifier Decl where
         lens get set
       where
         get :: Decl s -> Ident s
-        get (DecFun _ i _)          = i
-        get (DecAbsType _ i _)      = i
-        get (DecDataType _ i _ _)   = i
-        get (DecRecordType _ i _ _) = i
+        get (DecFun i _)          = i
+        get (DecAbsType i _)      = i
+        get (DecDataType i _ _)   = i
+        get (DecRecordType i _ _) = i
 
         set :: Decl s -> Ident s -> Decl s
-        set (DecFun p _ xs)         i    = DecFun p i xs
-        set (DecAbsType p _ x)      i      = DecAbsType p i x
-        set (DecDataType p _ x y)   i = DecDataType p i x y
-        set (DecRecordType p _ x y) i = DecRecordType p i x y
+        set (DecFun _ xs)         i = DecFun i xs
+        set (DecAbsType _ x)      i = DecAbsType i x
+        set (DecDataType _ x y)   i = DecDataType i x y
+        set (DecRecordType _ x y) i = DecRecordType i x y

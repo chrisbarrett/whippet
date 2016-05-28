@@ -77,7 +77,7 @@ spec = do
 
             types :: ParsedAst s -> [Text]
             types =
-                fmap (view (_DecFun._3.to typeToText))
+                fmap (view (_DecFun._2.to typeToText))
                 . view (_Right._AstSignature._2)
 
             decls :: ParsedAst s -> [Decl s]
@@ -136,7 +136,7 @@ spec = do
     describe "parsing a record declaration" $ do
         let fieldsFromAst :: ParsedAst s -> [Field s]
             fieldsFromAst =
-                view (_Right._AstDecl._DecRecordType._4)
+                view (_Right._AstDecl._DecRecordType._3)
 
             fieldLabels =
                 fmap (view (identifier.text)) . fieldsFromAst
@@ -177,12 +177,12 @@ spec = do
     describe "parsing a type declaration" $ do
         let ctorsFromAst :: ParsedAst s -> [Ctor s]
             ctorsFromAst =
-                view (_Right._AstDecl._DecDataType._4)
+                view (_Right._AstDecl._DecDataType._3)
 
             typeParameters :: ParsedAst s -> [Text]
             typeParameters =
                 fmap (view (identifier.text))
-                . view (_Right._AstDecl._DecDataType._3)
+                . view (_Right._AstDecl._DecDataType._2)
 
             ctorLabels :: ParsedAst s -> [Text]
             ctorLabels =
@@ -253,11 +253,11 @@ spec = do
 
     describe "parsing a function signature" $ do
         let ident :: ParsedAst s -> Text
-            ident = view (_Right._AstDecl._DecFun._2.identifier.text)
+            ident = view (_Right._AstDecl._DecFun._1.identifier.text)
 
             fnType :: ParsedAst s -> Text
             fnType =
-                view (_Right._AstDecl._DecFun._3.to typeToText)
+                view (_Right._AstDecl._DecFun._2.to typeToText)
 
             whenParsesToSigWithFn result assertions = do
                 it "parses to a function signature" $
