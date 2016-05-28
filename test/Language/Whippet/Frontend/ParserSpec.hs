@@ -8,6 +8,7 @@ import           Data.Monoid                      ((<>))
 import           Data.String                      (fromString)
 import           Data.Text                        (Text)
 import qualified Data.Text                        as Text
+import           Debug.Trace
 import           Language.Whippet.Frontend.AST
 import qualified Language.Whippet.Frontend.Parser as Parser
 import qualified Paths_whippet                    as Paths
@@ -256,13 +257,7 @@ spec = do
 
             tyParameters :: ParsedAst s -> [Text]
             tyParameters =
-                fmap (view (_TyNominal.to identifiers))
-                . view (_Right._AstDecl._DecFun._3)
-              where
-                identifiers (_, x, xs) =
-                    (x : xs)
-                    & fmap (view (identifier.text))
-                    & Text.unwords
+                fmap tyToText . view (_Right._AstDecl._DecFun._3)
 
             itParsesToFnSig :: ParsedAst s -> Spec
             itParsesToFnSig result =
@@ -287,7 +282,6 @@ spec = do
 
         context "function decl with function type parameter" $ do
             result <- parseFile Parser.ast "ListMapFun.whippet"
-            runIO $ print result
             itParsesToFnSig result
             it "has the expected identifier" $
                 ident result `shouldBe` "map"

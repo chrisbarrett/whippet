@@ -1,0 +1,13 @@
+signature Option {
+  type T
+
+  let some? : T a -> Bool
+
+  let none? : T a -> Bool
+
+  let get : a -> T a -> a
+
+  let map : (a -> b) -> T a -> T b
+
+  let filter : (a -> Bool) -> T a -> T a
+}
