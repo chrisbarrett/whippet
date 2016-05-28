@@ -17,12 +17,12 @@ instance HasPos Type where
         get :: Type s -> s
         get (TyNominal p _ _)  = p
         get (TyStructural p _) = p
-        get (TyFun p _)        = p
+        get (TyFun p _ _)      = p
 
         set :: Type s -> s -> Type s
         set (TyNominal _ x xs) p = TyNominal p x xs
         set (TyStructural _ x) p = TyStructural p x
-        set (TyFun _ xs)       p = TyFun p xs
+        set (TyFun _ a b)       p = TyFun p a b
 
 instance HasPos TypeParameter where
     srcPos = _TypeParameter.srcPos

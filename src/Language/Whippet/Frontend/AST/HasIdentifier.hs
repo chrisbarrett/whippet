@@ -1,17 +1,20 @@
 module Language.Whippet.Frontend.AST.HasIdentifier where
 
 import           Control.Lens                         hiding (get, set)
+import           Data.Monoid
 import           Language.Whippet.Frontend.AST.Lenses
 import           Language.Whippet.Frontend.AST.Types
 
-typeIdentifiers :: Getter (Type s) (Maybe [Ident s])
-typeIdentifiers =
-    to get
-  where
-    get :: Type s -> Maybe [Ident s]
-    get (TyNominal _ i _) = Just [i]
-    get TyStructural {}   = Nothing
-    get (TyFun _ xs) = fmap concat (mapM (view typeIdentifiers) xs)
+typeIdentifiers :: Type s -> Maybe [Ident s]
+
+typeIdentifiers (TyNominal _ i _) = Just [i]
+
+typeIdentifiers TyStructural {}   = Nothing
+
+typeIdentifiers (TyFun _ a b) = do
+    as <- typeIdentifiers a
+    bs <- typeIdentifiers b
+    pure (as <> bs)
 
 class HasIdentifier a where
     identifier :: Lens' (a s) (Ident s)

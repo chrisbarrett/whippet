@@ -143,7 +143,7 @@ spec = do
                 fmap (view (identifier.text)) . fieldsFromAst
 
             fieldTypeNames =
-                fmap (view (fieldType.typeIdentifiers._Just.each.text)) . fieldsFromAst
+                fmap (view (fieldType.to typeIdentifiers._Just.each.text)) . fieldsFromAst
 
             itParsesToRecordDecl :: ParsedAst s -> Spec
             itParsesToRecordDecl result =
@@ -190,7 +190,7 @@ spec = do
 
             ctorParamTypes :: ParsedAst s -> [Text]
             ctorParamTypes =
-                fmap (view (typeIdentifiers._Just.each.text))
+                fmap (view (to typeIdentifiers._Just.each.text))
                 . concatMap (view ctorParams)
                 . ctorsFromAst
 

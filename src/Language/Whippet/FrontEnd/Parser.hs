@@ -129,9 +129,11 @@ typeRef = try (parens parser) <|> parser
         structuralType mkSpan <|> functionType mkSpan <|> nominalType mkSpan
 
     functionType mkSpan = do
-        ps <- parens (typeRef `sepBy1` arrow)
+        a <- typeRef
+        arrow
+        b <- typeRef
         s <- mkSpan <$> position
-        pure (TyFun s ps)
+        pure (TyFun s a b)
 
     nominalType mkSpan = do
         i <- ident

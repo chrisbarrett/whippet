@@ -48,7 +48,7 @@ instance Show (Field s) where
 data Type s
     = TyNominal    s (Ident s) [Ident s]
     | TyStructural s [Field s]
-    | TyFun        s [Type s]
+    | TyFun        s (Type s) (Type s)
     deriving (Eq, Ord)
 
 tyToText :: Type s -> Text
@@ -57,10 +57,8 @@ tyToText (TyNominal _ i ps) = Text.unwords (map _identLabel (i : ps))
 
 tyToText (TyStructural _ fs) = Text.pack (show fs)
 
-tyToText (TyFun _ ts) =
-    "(" <> format ts <> ")"
-  where
-    format = Text.intercalate " -> " . fmap tyToText
+tyToText (TyFun _ a b) =
+    "(" <> tyToText a <> " -> " <> tyToText b <> ")"
 
 instance Show (Type s) where
     show = show . tyToText
