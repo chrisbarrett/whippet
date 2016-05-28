@@ -287,3 +287,11 @@ spec = do
                 ident result `shouldBe` "map"
             it "has the expected type parameters" $
                 tyParameters result `shouldBe` ["(a -> b)", "List a", "List b"]
+
+        context "function decl with paranthesised identifier" $ do
+            result <- parseFile Parser.ast "FunctionTyParens.whippet"
+            itParsesToFnSig result
+            it "has the expected identifier" $
+                ident result `shouldBe` "const"
+            it "has the expected type parameters" $
+                tyParameters result `shouldBe` ["a", "b", "a"]

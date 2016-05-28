@@ -120,12 +120,14 @@ recordDecl = do
 
 
 typeRef :: Parser (Type Span)
-typeRef = do
-    start <- position
-    ln <- line
-    let mkSpan = \end -> Span start end ln
-    structuralType mkSpan <|> functionType mkSpan <|> nominalType mkSpan
+typeRef = try (parens parser) <|> parser
   where
+    parser = do
+        start <- position
+        ln <- line
+        let mkSpan = \end -> Span start end ln
+        structuralType mkSpan <|> functionType mkSpan <|> nominalType mkSpan
+
     functionType mkSpan = do
         ps <- parens (typeRef `sepBy1` arrow)
         s <- mkSpan <$> position
