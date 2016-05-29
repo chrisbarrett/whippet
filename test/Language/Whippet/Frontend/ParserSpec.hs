@@ -57,7 +57,7 @@ spec = do
             whenParsesToModule result assertions = do
                 it "parses to a module" $
                   result `shouldSatisfy` is (_Right._AstModule)
-                when (is _Right result) $ assertions
+                when (is _Right result) assertions
 
         context "empty module" $ do
             result <- parseFile "EmptyModule.whippet"
@@ -89,7 +89,7 @@ spec = do
             whenParsesToSignature result assertions = do
                 it "parses to a signature" $
                   result `shouldSatisfy` is (_Right._AstSignature)
-                when (is _Right result) $ assertions
+                when (is _Right result) assertions
 
 
         context "empty signature" $ do
@@ -122,7 +122,7 @@ spec = do
 
         context "signature with abstract type" $ do
             result <- parseFile "SignatureWithAbsType.whippet"
-            whenParsesToSignature result $ do
+            whenParsesToSignature result $
                 it "has the expected type name" $
                     identifiers result `shouldBe` ["T"]
 
@@ -147,7 +147,7 @@ spec = do
             whenParsesToRecordDecl result assertions = do
                 it "parses to a record decl" $
                     result `shouldSatisfy` is (_Right._AstDecl._DecRecordType)
-                when (is _Right result) $ assertions
+                when (is _Right result) assertions
 
 
         context "record type" $ do
@@ -170,7 +170,7 @@ spec = do
 
         context "record type with comma before first field" $ do
             result <- parseFile "RecordOptionalLeadingComma.whippet"
-            whenParsesToRecordDecl result $ do
+            whenParsesToRecordDecl result $
                 it "has the expected fields" $
                     fieldLabels result `shouldBe` ["fst", "snd"]
 
@@ -197,17 +197,17 @@ spec = do
             whenParsesToTypeDecl result assertions = do
                 it "parses to a type decl" $
                     result `shouldSatisfy` is (_Right._AstDecl._DecDataType)
-                when (is _Right result) $ assertions
+                when (is _Right result) assertions
 
             whenParsesToAbsTypeDecl result assertions = do
                 it "parses to a type decl" $
                     result `shouldSatisfy` is (_Right._AstDecl._DecAbsType)
-                when (is _Right result) $ assertions
+                when (is _Right result) assertions
 
 
         context "abstract type" $ do
             result <- parseFile "Void.whippet"
-            whenParsesToAbsTypeDecl result $ do
+            whenParsesToAbsTypeDecl result $
                 it "has the expected identifier" $
                     result `shouldSatisfy` astHasIdentifier "Void"
 
@@ -229,25 +229,25 @@ spec = do
 
         context "first constructor has a leading pipe" $ do
             result <- parseFile "CtorOptionalPipe.whippet"
-            whenParsesToTypeDecl result $ do
+            whenParsesToTypeDecl result $
                 it "has the expected constructors" $
                     ctorLabels result `shouldBe` ["True", "False"]
 
         context "single type parameter" $ do
             result <- parseFile "PhantomType.whippet"
-            whenParsesToTypeDecl result $ do
+            whenParsesToTypeDecl result $
                 it "has the expected type parameter" $
                     typeParameters result `shouldBe` ["a"]
 
         context "multiple type parameters" $ do
             result <- parseFile "CoerceType.whippet"
-            whenParsesToTypeDecl result $ do
+            whenParsesToTypeDecl result $
                 it "has the expected type parameters" $
                     typeParameters result `shouldBe` ["source", "dest"]
 
         context "constructor reference to type parameters" $ do
             result <- parseFile "Either.whippet"
-            whenParsesToTypeDecl result $ do
+            whenParsesToTypeDecl result $
                 it "has the expected ctor parameter types" $
                     ctorParamTypes result `shouldBe` ["e", "a"]
 
@@ -262,7 +262,7 @@ spec = do
             whenParsesToSigWithFn result assertions = do
                 it "parses to a function signature" $
                     result `shouldSatisfy` is (_Right._AstDecl._DecFun)
-                when (is _Right result) $ assertions
+                when (is _Right result) assertions
 
         context "unary type signature" $ do
             result <- parseFile "UnitFunSig.whippet"
