@@ -52,13 +52,13 @@ instance HasIdentifier Decl where
         lens get set
       where
         get :: Decl s -> Ident s
-        get (DecFun i _)          = i
+        get (DecFun i _ _)        = i
         get (DecAbsType i _)      = i
         get (DecDataType i _ _)   = i
         get (DecRecordType i _ _) = i
 
         set :: Decl s -> Ident s -> Decl s
-        set (DecFun _ xs)         i = DecFun i xs
+        set (DecFun _ xs e)       i = DecFun i xs e
         set (DecAbsType _ x)      i = DecAbsType i x
         set (DecDataType _ x y)   i = DecDataType i x y
         set (DecRecordType _ x y) i = DecRecordType i x y

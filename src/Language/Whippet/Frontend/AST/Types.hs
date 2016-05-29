@@ -81,17 +81,18 @@ instance Show (TypeParameter s) where
 -- * Declarations
 
 data Decl s
-    = DecFun        (Ident s) (Type s)
+    = DecFun        (Ident s) (Type s) (Maybe (Expr s))
     | DecAbsType    (Ident s) [TypeParameter s]
     | DecDataType   (Ident s) [TypeParameter s] [Ctor s]
     | DecRecordType (Ident s) [TypeParameter s] [Field s]
     deriving (Eq, Ord)
 
 instance Show (Decl s) where
-  show (DecFun i t) =
+  show (DecFun i t e) =
       showRecord "DecFun"
           [ ("id", show i)
           , ("type", show t)
+          , ("expr", show e)
           ]
   show (DecAbsType i ps) =
       showRecord "DecAbsType"
@@ -150,3 +151,33 @@ instance Show (AST s) where
   show (AstDecl ds) =
       showRecord "AstDecl"
           [("decl", show ds)]
+
+-- * Expressions
+
+type Var = Ident
+
+data Discriminator s = DiscVar (Var s)
+    deriving (Eq, Ord, Show)
+
+data Pat s = Pat (Discriminator s) (Expr s)
+    deriving (Eq, Ord, Show)
+
+data Lit s
+    = LitList [Expr s]
+    | LitNum Text
+    | LitRecord [(Ident s, Expr s)]
+    | LitString Text
+    deriving (Eq, Ord, Show)
+
+data Expr s
+    = EAnnotate (Expr s) (Type s)
+    | EApp (Expr s) (Expr s)
+    | EHole
+    | EIf (Expr s) (Expr s) (Expr s)
+    | ELam [Pat s]
+    | ELet (Pat s) (Maybe (Type s)) (Expr s)
+    | ELit (Lit s)
+    | EMatch (Expr s) [Pat s]
+    | EParen (Expr s)
+    | EVar (Var s)
+    deriving (Eq, Ord, Show)

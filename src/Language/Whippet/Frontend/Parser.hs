@@ -81,7 +81,7 @@ decFun = do
     i <- ident
     colon
     t <- typeRef
-    pure (DecFun i t)
+    pure (DecFun i t Nothing)
     <?> "let"
 
 decRecord :: Parser (Decl Span)
