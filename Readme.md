@@ -1,4 +1,4 @@
-# Whippet Language
+# Whippet Language [![Build Status](https://travis-ci.org/chrisbarrett/whippet.svg?branch=master)](https://travis-ci.org/chrisbarrett/whippet)
 
 An experimental pure functional language. Goals:
 
