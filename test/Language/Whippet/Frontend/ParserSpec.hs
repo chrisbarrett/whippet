@@ -126,9 +126,19 @@ spec = do
                 it "has the expected type name" $
                     identifiers result `shouldBe` ["T"]
 
-        -- context "realistic signature" $ do
-        --     result <- parseFile "Option.whippet"
-        --     whenParsesToSignature result
+        context "realistic signature" $ do
+            result <- parseFile "Option.whippet"
+            whenParsesToSignature result $ do
+                it "has the expected module name" $
+                    result `shouldSatisfy` astHasIdentifier "Option"
+                it "has the expected identifiers" $
+                    identifiers result `shouldBe` [ "T"
+                                                  , "some?"
+                                                  , "none?"
+                                                  , "get"
+                                                  , "map"
+                                                  , "filter"
+                                                  ]
 
 
     -- Type declarations
