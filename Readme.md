@@ -5,7 +5,7 @@ An experimental pure functional language. Goals:
 - statically typed
 - strictly evaluated
 - uses System F with row polymorphism as the core calculus
-- compiles to Emacs Lisp (or possible lapcode).
+- compiles to Emacs Lisp (or possibly lapcode).
 
 Current status:
 
