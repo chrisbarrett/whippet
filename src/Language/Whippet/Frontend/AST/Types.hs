@@ -2,11 +2,12 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Language.Whippet.Frontend.AST.Types where
 
-import qualified Data.List     as List
+import qualified Data.List       as List
 import           Data.Monoid
-import           Data.Text     (Text)
-import qualified Data.Text     as Text
-import qualified Text.Trifecta as Trifecta
+import           Data.Scientific (Scientific)
+import           Data.Text       (Text)
+import qualified Data.Text       as Text
+import qualified Text.Trifecta   as Trifecta
 
 showRecord :: Text -> [(Text, String)] -> String
 showRecord ty fields =
@@ -165,7 +166,8 @@ data Pat = Pat Discriminator Expr
 
 data Lit
     = LitList [Expr]
-    | LitNum Text
+    | LitInt Integer
+    | LitScientific Scientific
     | LitRecord [(Ident, Expr)]
     | LitString Text
     deriving (Eq, Ord, Show)

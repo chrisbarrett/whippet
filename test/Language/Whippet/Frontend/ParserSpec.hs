@@ -339,6 +339,8 @@ spec = do
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(A -> {unpack: A})"
 
+    let parseExpr :: BS.ByteString -> Either Doc Expr
+        parseExpr = resultToEither . Trifecta.parseByteString (Parser.expr <* Trifecta.eof) mempty
 
     describe "variable references" $ do
 
@@ -349,9 +351,6 @@ spec = do
 
             ident :: Either Doc Expr -> Text
             ident = view (_Right._EVar.identifier.text)
-
-            parseExpr :: BS.ByteString -> Either Doc Expr
-            parseExpr = resultToEither . Trifecta.parseByteString Parser.expr mempty
 
         context "identifier starting with an underscore" $ do
             let result = parseExpr "_x"
@@ -386,3 +385,54 @@ spec = do
             whenParsesToVar result $
                 it "has the expected identifier" $
                     ident result `shouldBe` "x1"
+
+    describe "integer literals" $ do
+
+        context "natural number" $ do
+            let result = parseExpr "1"
+            it "parses to an integer" $
+                result `shouldSatisfy` is (_Right._ELit._LitInt)
+
+        context "signed positive integer" $ do
+            let result = parseExpr "+1"
+            it "parses to an integer" $
+                result `shouldSatisfy` is (_Right._ELit._LitInt)
+
+        context "signed negative integer" $ do
+            let result = parseExpr "-1"
+            it "parses to an integer" $
+                result `shouldSatisfy` is (_Right._ELit._LitInt)
+
+    describe "floating point literals" $ do
+
+        context "unsigned float" $ do
+            let result = parseExpr "1.5"
+            it "parses to a float number" $
+                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+
+        context "signed positive float" $ do
+            let result = parseExpr "+1.5"
+            it "parses to a float number" $
+                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+
+        context "signed negative float" $ do
+            let result = parseExpr "-1.5"
+            it "parses to a float number" $
+                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+
+    describe "scientific literals" $ do
+
+        context "unsigned scientific" $ do
+            let result = parseExpr "1e-6"
+            it "parses to a float" $
+                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+
+        context "positive scientific" $ do
+            let result = parseExpr "+1e-6"
+            it "parses to a float" $
+                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+
+        context "negative scientific" $ do
+            let result = parseExpr "-1e-6"
+            it "parses to a float" $
+                result `shouldSatisfy` is (_Right._ELit._LitScientific)

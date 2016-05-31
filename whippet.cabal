@@ -25,6 +25,7 @@ library
                      , lens
                      , mtl
                      , parsers
+                     , scientific
                      , text
                      , trifecta
   default-language:    Haskell2010

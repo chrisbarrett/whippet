@@ -134,12 +134,16 @@ expr :: Parser Expr
 expr =
     buildExpressionParser [] term
   where
-    term = variable
+    term =  variable
+        <|> numberLiteral
 
     variable =
         choice [ EVar <$> ident
                , lookAhead (char '?') *> fail "Identifier cannot start with a question mark"
                ]
+
+    numberLiteral =
+        ELit . (either LitInt LitScientific) <$> integerOrScientific
 
 -- * Helpers
 
