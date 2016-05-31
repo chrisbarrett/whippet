@@ -29,5 +29,5 @@ makePrisms ''Ctor
 makeLenses ''AST
 makePrisms ''AST
 
-text :: Lens' (Ident s) Text
+text :: Lens' Ident Text
 text = identLabel

@@ -22,32 +22,32 @@ import qualified Text.Trifecta.Delta           as Trifecta
 
 -- * Parser definitions
 
-parseFile :: MonadIO m => FilePath -> m (Result (AST Span))
+parseFile :: MonadIO m => FilePath -> m (Result AST)
 parseFile = parseFromFileEx ast
 
-parseString :: String -> Result (AST Span)
+parseString :: String -> Result AST
 parseString =
     Trifecta.parseByteString ast mempty . fromString
 
-ast :: Parser (AST Span)
+ast :: Parser AST
 ast = whiteSpace *> (astModule <|> astSignature <|> astDecl)
 
-astSignature :: Parser (AST Span)
+astSignature :: Parser AST
 astSignature = do
     reserved "signature"
     AstSignature <$> ident <*> braces (many declaration)
     <?> "signature"
 
-astModule :: Parser (AST Span)
+astModule :: Parser AST
 astModule = do
     reserved "module"
     AstModule <$> ident <*> braces (many ast)
     <?> "module"
 
-astDecl :: Parser (AST Span)
+astDecl :: Parser AST
 astDecl = AstDecl <$> declaration
 
-decType :: Parser (Decl Span)
+decType :: Parser Decl
 decType = do
     reserved "type"
     id <- ident
@@ -65,17 +65,17 @@ decType = do
         pure (DecAbsType id tyArgs)
 
 
-constructor :: Parser (Ctor Span)
+constructor :: Parser Ctor
 constructor = do
     i <- ident
     ts <- many typeRef
     pure (Ctor i ts)
     <?> "constructor"
 
-declaration :: Parser (Decl Span)
+declaration :: Parser Decl
 declaration = decFun <|> decRecord <|> decType
 
-decFun :: Parser (Decl Span)
+decFun :: Parser Decl
 decFun = do
     reserved "let"
     i <- ident
@@ -84,7 +84,7 @@ decFun = do
     pure (DecFun i t Nothing)
     <?> "let"
 
-decRecord :: Parser (Decl Span)
+decRecord :: Parser Decl
 decRecord = do
     reserved "record"
     i <- ident
@@ -95,7 +95,7 @@ decRecord = do
     <?> "record declaration"
 
 
-typeRef :: Parser (Type Span)
+typeRef :: Parser Type
 typeRef = do
     buildExpressionParser operators tyTerm
   where
@@ -115,17 +115,17 @@ typeRef = do
                 ]
 
 
-recordFields :: Parser [Field Span]
+recordFields :: Parser [Field]
 recordFields = braces (optional comma *> field `sepBy1` comma)
 
-field :: Parser (Field Span)
+field :: Parser Field
 field = do
     i <- ident <?> "field name"
     colon
     t <- typeRef
     pure (Field i t)
 
-typeParameter :: Parser (TypeParameter Span)
+typeParameter :: Parser TypeParameter
 typeParameter = TypeParameter <$> ident <?> "type parameter"
 
 -- * Helpers
@@ -138,7 +138,7 @@ style = emptyIdents
   where
     reservedWords = ["module", "astSignature", "type", "record", "let"]
 
-ident :: Parser (Ident Span)
+ident :: Parser Ident
 ident = do
     (s :~ span) <- spanned (Trifecta.ident style)
     pure (Ident span s)

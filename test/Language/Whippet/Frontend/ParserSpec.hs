@@ -20,7 +20,7 @@ import qualified Text.Trifecta                    as Trifecta
 import qualified Text.Trifecta.Delta              as Trifecta
 import qualified Text.Trifecta.Result             as Trifecta
 
-type ParsedAst s = Either Doc (AST s)
+type ParsedAst = Either Doc AST
 
 main :: IO ()
 main = hspec spec
@@ -29,7 +29,7 @@ parseFile name = do
     content <- runIO (loadResource name)
     pure (resultToEither (parse content))
   where
-    resultToEither :: Trifecta.Result (AST s) -> ParsedAst s
+    resultToEither :: Trifecta.Result AST -> ParsedAst
     resultToEither (Trifecta.Success x) = Right x
     resultToEither (Trifecta.Failure e) = Left ("\n" <> e)
 
@@ -41,7 +41,7 @@ parseFile name = do
         let delta = Trifecta.Directed (fromString name) 0 0 0 0
         in Trifecta.parseByteString (Parser.ast <* Trifecta.eof) delta (fromString content)
 
-astHasIdentifier :: Text -> ParsedAst s -> Bool
+astHasIdentifier :: Text -> ParsedAst -> Bool
 astHasIdentifier s =
    (==) s . view (_Right.identifier.text)
 
@@ -51,7 +51,7 @@ spec = do
     -- Modules
 
     describe "parsing modules" $ do
-        let body :: ParsedAst s -> [AST s]
+        let body :: ParsedAst -> [AST]
             body = view (_Right._AstModule._2)
 
             whenParsesToModule result assertions = do
@@ -71,19 +71,19 @@ spec = do
 
     describe "parsing signatures" $ do
 
-        let identifiers :: ParsedAst s -> [Text]
+        let identifiers :: ParsedAst -> [Text]
             identifiers =
                 fmap (view (identifier.text)) . view (_Right._AstSignature._2)
 
-            types :: ParsedAst s -> [Text]
+            types :: ParsedAst -> [Text]
             types =
                 fmap (view (_DecFun._2.to typeToText))
                 . view (_Right._AstSignature._2)
 
-            decls :: ParsedAst s -> [Decl s]
+            decls :: ParsedAst -> [Decl]
             decls = view (_Right._AstSignature._2)
 
-            declsCount :: ParsedAst s -> Int
+            declsCount :: ParsedAst -> Int
             declsCount = length . decls
 
             whenParsesToSignature result assertions = do
@@ -144,7 +144,7 @@ spec = do
     -- Type declarations
 
     describe "parsing a record declaration" $ do
-        let fieldsFromAst :: ParsedAst s -> [Field s]
+        let fieldsFromAst :: ParsedAst -> [Field]
             fieldsFromAst =
                 view (_Right._AstDecl._DecRecordType._3)
 
@@ -185,20 +185,20 @@ spec = do
                     fieldLabels result `shouldBe` ["fst", "snd"]
 
     describe "parsing a type declaration" $ do
-        let ctorsFromAst :: ParsedAst s -> [Ctor s]
+        let ctorsFromAst :: ParsedAst -> [Ctor]
             ctorsFromAst =
                 view (_Right._AstDecl._DecDataType._3)
 
-            typeParameters :: ParsedAst s -> [Text]
+            typeParameters :: ParsedAst -> [Text]
             typeParameters =
                 fmap (view (identifier.text))
                 . view (_Right._AstDecl._DecDataType._2)
 
-            ctorLabels :: ParsedAst s -> [Text]
+            ctorLabels :: ParsedAst -> [Text]
             ctorLabels =
                 fmap (view (identifier.text)) . ctorsFromAst
 
-            ctorParamTypes :: ParsedAst s -> [Text]
+            ctorParamTypes :: ParsedAst -> [Text]
             ctorParamTypes =
                 fmap (view (to typeIdentifiers._Just.each.text))
                 . concatMap (view ctorParams)
@@ -262,10 +262,10 @@ spec = do
                     ctorParamTypes result `shouldBe` ["e", "a"]
 
     describe "parsing a function signature" $ do
-        let ident :: ParsedAst s -> Text
+        let ident :: ParsedAst -> Text
             ident = view (_Right._AstDecl._DecFun._1.identifier.text)
 
-            fnType :: ParsedAst s -> Text
+            fnType :: ParsedAst -> Text
             fnType =
                 view (_Right._AstDecl._DecFun._2.to typeToText)
 

@@ -2,10 +2,11 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Language.Whippet.Frontend.AST.Types where
 
-import qualified Data.List   as List
+import qualified Data.List     as List
 import           Data.Monoid
-import           Data.Text   (Text)
-import qualified Data.Text   as Text
+import           Data.Text     (Text)
+import qualified Data.Text     as Text
+import qualified Text.Trifecta as Trifecta
 
 showRecord :: Text -> [(Text, String)] -> String
 showRecord ty fields =
@@ -16,43 +17,43 @@ showRecord ty fields =
 
 -- * Identifiers
 
-data Ident s = Ident {
-      _identPos   :: s
+data Ident = Ident {
+      _identPos   :: Trifecta.Span
     , _identLabel :: Text
     }
     deriving (Eq, Ord)
 
-instance Show (Ident s) where
+instance Show Ident where
   show =  show . _identLabel
 
 
 -- * Record Fields
 
-data Field s = Field {
-      _fieldIdent :: Ident s
-    , _fieldType  :: Type s
+data Field = Field {
+      _fieldIdent :: Ident
+    , _fieldType  :: Type
     }
     deriving (Eq, Ord)
 
-fieldToText :: Field s -> Text
+fieldToText :: Field -> Text
 fieldToText Field {..} =
     ident <> ": " <> typeToText _fieldType
   where
     ident = _identLabel _fieldIdent
 
-instance Show (Field s) where
+instance Show Field where
   show = show . fieldToText
 
 -- * Type Identifiers
 
-data Type s
-    = TyNominal    (Ident s)
-    | TyStructural [Field s]
-    | TyApp        (Type s) (Type s)
-    | TyFun        (Type s) (Type s)
+data Type
+    = TyNominal    Ident
+    | TyStructural [Field]
+    | TyApp        Type Type
+    | TyFun        Type Type
     deriving (Eq, Ord)
 
-typeToText :: Type s -> Text
+typeToText :: Type -> Text
 
 typeToText (TyNominal i ) =
     _identLabel i
@@ -66,28 +67,28 @@ typeToText (TyStructural fs) =
 typeToText (TyFun a b) =
     "(" <> typeToText a <> " -> " <> typeToText b <> ")"
 
-instance Show (Type s) where
+instance Show Type where
     show = show . typeToText
 
 -- * Type Parameters
 
-newtype TypeParameter s = TypeParameter {_typeParameterIdent :: Ident s}
+newtype TypeParameter = TypeParameter {_typeParameterIdent :: Ident}
     deriving (Eq, Ord)
 
-instance Show (TypeParameter s) where
+instance Show TypeParameter where
   show = show . _typeParameterIdent
 
 
 -- * Declarations
 
-data Decl s
-    = DecFun        (Ident s) (Type s) (Maybe (Expr s))
-    | DecAbsType    (Ident s) [TypeParameter s]
-    | DecDataType   (Ident s) [TypeParameter s] [Ctor s]
-    | DecRecordType (Ident s) [TypeParameter s] [Field s]
+data Decl
+    = DecFun        Ident Type (Maybe Expr)
+    | DecAbsType    Ident [TypeParameter]
+    | DecDataType   Ident [TypeParameter] [Ctor]
+    | DecRecordType Ident [TypeParameter] [Field]
     deriving (Eq, Ord)
 
-instance Show (Decl s) where
+instance Show Decl where
   show (DecFun i t e) =
       showRecord "DecFun"
           [ ("id", show i)
@@ -115,13 +116,13 @@ instance Show (Decl s) where
 
 -- * Constructors
 
-data Ctor s = Ctor {
-      _ctorIdent  :: Ident s
-    , _ctorParams :: [Type s]
+data Ctor = Ctor {
+      _ctorIdent  :: Ident
+    , _ctorParams :: [Type]
     }
     deriving (Eq, Ord)
 
-instance Show (Ctor s) where
+instance Show Ctor where
   show Ctor {..} =
       showRecord "Ctor"
           [ ("id", show _ctorIdent)
@@ -131,13 +132,13 @@ instance Show (Ctor s) where
 
 -- * Top-level declarations
 
-data AST s
-    = AstModule    (Ident s) [AST s]
-    | AstSignature (Ident s) [Decl s]
-    | AstDecl      (Decl s)
+data AST
+    = AstModule    Ident [AST]
+    | AstSignature Ident [Decl]
+    | AstDecl      Decl
     deriving (Eq, Ord)
 
-instance Show (AST s) where
+instance Show AST where
   show (AstModule i ds) =
       showRecord "AstModule"
           [ ("id", show i)
@@ -156,28 +157,28 @@ instance Show (AST s) where
 
 type Var = Ident
 
-data Discriminator s = DiscVar (Var s)
+data Discriminator = DiscVar Var
     deriving (Eq, Ord, Show)
 
-data Pat s = Pat (Discriminator s) (Expr s)
+data Pat = Pat Discriminator Expr
     deriving (Eq, Ord, Show)
 
-data Lit s
-    = LitList [Expr s]
+data Lit
+    = LitList [Expr]
     | LitNum Text
-    | LitRecord [(Ident s, Expr s)]
+    | LitRecord [(Ident, Expr)]
     | LitString Text
     deriving (Eq, Ord, Show)
 
-data Expr s
-    = EAnnotate (Expr s) (Type s)
-    | EApp (Expr s) (Expr s)
+data Expr
+    = EAnnotate Expr Type
+    | EApp Expr Expr
     | EHole
-    | EIf (Expr s) (Expr s) (Expr s)
-    | ELam [Pat s]
-    | ELet (Pat s) (Maybe (Type s)) (Expr s)
-    | ELit (Lit s)
-    | EMatch (Expr s) [Pat s]
-    | EParen (Expr s)
-    | EVar (Var s)
+    | EIf Expr Expr Expr
+    | ELam [Pat]
+    | ELet Pat (Maybe Type) Expr
+    | ELit Lit
+    | EMatch Expr [Pat]
+    | EParen Expr
+    | EVar Var
     deriving (Eq, Ord, Show)
