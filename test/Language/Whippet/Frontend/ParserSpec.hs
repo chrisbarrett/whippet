@@ -5,6 +5,7 @@ module Language.Whippet.Frontend.ParserSpec where
 import           Control.Lens
 import           Control.Lens.Extras
 import           Control.Monad                    (when)
+import qualified Data.ByteString.Internal         as BS
 import           Data.Monoid                      ((<>))
 import           Data.String                      (fromString)
 import           Data.Text                        (Text)
@@ -25,14 +26,14 @@ type ParsedAst = Either Doc AST
 main :: IO ()
 main = hspec spec
 
+resultToEither :: Trifecta.Result a -> Either Doc a
+resultToEither (Trifecta.Success x) = Right x
+resultToEither (Trifecta.Failure e) = Left ("\n" <> e)
+
 parseFile name = do
     content <- runIO (loadResource name)
     pure (resultToEither (parse content))
   where
-    resultToEither :: Trifecta.Result AST -> ParsedAst
-    resultToEither (Trifecta.Success x) = Right x
-    resultToEither (Trifecta.Failure e) = Left ("\n" <> e)
-
     loadResource name = do
         realPath <- Paths.getDataFileName ("test/resources/" <> name)
         readFile realPath
@@ -337,3 +338,51 @@ spec = do
                     ident result `shouldBe` "box"
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(A -> {unpack: A})"
+
+
+    describe "variable references" $ do
+
+        let whenParsesToVar result assertions = do
+                it "parses to a variable reference" $
+                  result `shouldSatisfy` is (_Right._EVar)
+                when (is _Right result) assertions
+
+            ident :: Either Doc Expr -> Text
+            ident = view (_Right._EVar.identifier.text)
+
+            parseExpr :: BS.ByteString -> Either Doc Expr
+            parseExpr = resultToEither . Trifecta.parseByteString Parser.expr mempty
+
+        context "identifier starting with an underscore" $ do
+            let result = parseExpr "_x"
+            whenParsesToVar result $
+                it "has the expected identifier" $
+                    ident result `shouldBe` "_x"
+
+        context "identifier ending with an underscore" $ do
+            let result = parseExpr "x_"
+            whenParsesToVar result $
+                it "has the expected identifier" $
+                    ident result `shouldBe` "x_"
+
+        context "identifier starting with a question mark" $ do
+            let result = parseExpr "?x"
+            it "should fail to parse" $
+                result `shouldSatisfy` is _Left
+
+        context "identifier containing a question mark" $ do
+            let result = parseExpr "x?"
+            whenParsesToVar result $
+                it "has the expected identifier" $
+                    ident result `shouldBe` "x?"
+
+        context "identifier starting with a number" $ do
+            let result = parseExpr "1x"
+            it "should fail to parse" $
+                result `shouldSatisfy` is _Left
+
+        context "identifier containing a number" $ do
+            let result = parseExpr "x1"
+            whenParsesToVar result $
+                it "has the expected identifier" $
+                    ident result `shouldBe` "x1"

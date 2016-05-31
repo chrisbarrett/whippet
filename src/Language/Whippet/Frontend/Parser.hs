@@ -128,6 +128,19 @@ field = do
 typeParameter :: Parser TypeParameter
 typeParameter = TypeParameter <$> ident <?> "type parameter"
 
+-- * Expression
+
+expr :: Parser Expr
+expr =
+    buildExpressionParser [] term
+  where
+    term = variable
+
+    variable =
+        choice [ EVar <$> ident
+               , lookAhead (char '?') *> fail "Identifier cannot start with a question mark"
+               ]
+
 -- * Helpers
 
 style :: Trifecta.IdentifierStyle Parser

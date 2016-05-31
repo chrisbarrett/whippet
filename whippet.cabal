@@ -43,6 +43,7 @@ test-suite whippet-test
   main-is:             Spec.hs
   build-depends:       base
                      , ansi-wl-pprint
+                     , bytestring
                      , hspec
                      , utf8-string
                      , filepath
