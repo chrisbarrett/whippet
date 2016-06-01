@@ -141,43 +141,43 @@ expr =
         <|> numberLiteral
         <|> stringLiteral
 
-    variable =
-        choice [ EVar <$> ident
-               , lookAhead (char '?') *> fail "Identifier cannot start with a question mark"
-               ]
+variable :: Parser Expr
+variable =
+    choice [ EVar <$> ident
+           , lookAhead (char '?') *> fail "Identifier cannot start with a question mark"
+           ]
 
-    numberLiteral =
-        ELit . (either LitInt LitScientific) <$> integerOrScientific
+numberLiteral :: Parser Expr
+numberLiteral =
+    ELit . (either LitInt LitScientific) <$> integerOrScientific
 
-    doubleQuote =
-        char '"'
+stringLiteral :: Parser Expr
+stringLiteral = do
+    let start = doubleQuote <?> "start of string (double-quotes)"
+        content = escapeSequence <|> anyChar
+        end = doubleQuote <?> "end of string (double-quotes)"
+    str <- start *> token (content `manyTill` end)
+    pure ((ELit . LitString) (Text.pack str))
+    <?> "string"
+  where
+    escapeSequence = do
+        ch <- char '\\' *> anyChar
+        case Map.lookup ch escapeCodes of
+          Just c  -> pure c
+          Nothing -> fail "Invalid escape sequence"
 
-    stringLiteral :: Parser Expr
-    stringLiteral = do
-        let start = doubleQuote <?> "start of string (double-quotes)"
-            content = escapeSequence <|> anyChar
-            end = doubleQuote <?> "end of string (double-quotes)"
-        str <- start *> token (content `manyTill` end)
-        pure ((ELit . LitString) (Text.pack str))
-        <?> "string"
-      where
-        escapeSequence :: Parser Char
-        escapeSequence = do
-            ch <- char '\\' *> anyChar
-            case Map.lookup ch escapeCodes of
-              Just c  -> pure c
-              Nothing -> fail "Invalid escape sequence"
+    doubleQuote = char '"'
 
-        escapeCodes = Map.fromList
-                      [ ('\"', '\"')
-                      , ('\\', '\\')
-                      , ('/', '/')
-                      , ('n', '\n')
-                      , ('r', '\r')
-                      , ('f', '\f')
-                      , ('t', '\t')
-                      , ('b', '\b')
-                      ]
+    escapeCodes = Map.fromList
+                  [ ('\"', '\"')
+                  , ('\\', '\\')
+                  , ('/', '/')
+                  , ('n', '\n')
+                  , ('r', '\r')
+                  , ('f', '\f')
+                  , ('t', '\t')
+                  , ('b', '\b')
+                  ]
 
 -- * Helpers
 
