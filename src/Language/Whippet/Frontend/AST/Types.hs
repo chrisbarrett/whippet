@@ -175,7 +175,7 @@ data Lit
 data Expr
     = EAnnotate Expr Type
     | EApp Expr Expr
-    | EHole
+    | EHole Ident
     | EIf Expr Expr Expr
     | ELam [Pat]
     | ELet Pat (Maybe Type) Expr

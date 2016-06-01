@@ -132,8 +132,17 @@ expr =
     buildExpressionParser [] term
   where
     term =  variable
+        <|> hole
         <|> numberLiteral
         <|> stringLiteral
+
+hole :: Parser Expr
+hole = do
+    (s :~ span) <- spanned (Trifecta.ident holeStyle)
+    pure (EHole (Ident span s))
+    <?> "hole"
+    where
+      holeStyle = style & styleStart .~ (letter <|> char '_')
 
 variable :: Parser Expr
 variable =
@@ -172,7 +181,7 @@ stringLiteral = do
 style :: Trifecta.IdentifierStyle Parser
 style = emptyIdents
         & styleReserved .~ reservedWords
-        & styleStart    .~ (letter <|> char '_')
+        & styleStart    .~ letter
         & styleLetter   .~ (alphaNum <|> oneOf "_?")
   where
     reservedWords = ["module", "astSignature", "type", "record", "let"]

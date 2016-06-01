@@ -359,12 +359,6 @@ spec = do
             ident :: Either Doc Expr -> Text
             ident = view (_Right._EVar.identifier.text)
 
-        context "identifier starting with an underscore" $ do
-            let result = parseExpr "_x"
-            whenParsesToVar result $
-                it "has the expected identifier" $
-                    ident result `shouldBe` "_x"
-
         context "identifier ending with an underscore" $ do
             let result = parseExpr "x_"
             whenParsesToVar result $
@@ -392,6 +386,28 @@ spec = do
             whenParsesToVar result $
                 it "has the expected identifier" $
                     ident result `shouldBe` "x1"
+
+    describe "holes" $ do
+
+        let whenParsesToHole result assertions = do
+                it "parses to a hole" $
+                    result `shouldSatisfy` is (_Right._EHole)
+                when (is _Right result) assertions
+
+            holeContent =
+                 view (_Right._EHole.text)
+
+        context "underscore" $ do
+            let result = parseExpr "_"
+            whenParsesToHole result $ do
+                it "has the expected identifier" $
+                    holeContent result `shouldBe` "_"
+
+        context "named hole" $ do
+            let result = parseExpr "_1"
+            whenParsesToHole result $ do
+                it "has the expected identifier" $
+                    holeContent result `shouldBe` "_1"
 
     describe "integer literals" $ do
 
