@@ -135,6 +135,8 @@ expr =
         <|> hole
         <|> numberLiteral
         <|> stringLiteral
+        <|> listLiteral
+        <|> recordLiteral
 
 hole :: Parser Expr
 hole = do
@@ -146,13 +148,11 @@ hole = do
 
 variable :: Parser Expr
 variable =
-    choice [ EVar <$> ident
-           , lookAhead (char '?') *> fail "Identifier cannot start with a question mark"
-           ]
+    EVar <$> ident
 
 numberLiteral :: Parser Expr
 numberLiteral =
-    ELit . (either LitInt LitScientific) <$> integerOrScientific
+    ELit . either LitInt LitScientific <$> integerOrScientific
 
 stringLiteral :: Parser Expr
 stringLiteral = do
@@ -175,6 +175,22 @@ stringLiteral = do
           't'  -> pure '\t'
           'b'  -> pure '\b'
           _    -> fail "Invalid escape sequence"
+
+listLiteral :: Parser Expr
+listLiteral =
+    ELit . LitList <$> brackets (optional comma *> expr `sepEndBy` comma)
+
+recordLiteral :: Parser Expr
+recordLiteral =
+    ELit . LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
+  where
+    field :: Parser (Ident, Expr)
+    field = do
+        f <- ident
+        colon
+        e <- expr
+        pure (f, e)
+
 
 -- * Helpers
 

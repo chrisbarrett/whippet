@@ -486,3 +486,80 @@ spec = do
             whenParsesToString result $ do
                 it "has the expected content" $
                     stringContent result `shouldBe` "foo\nbar"
+
+    describe "list literal" $ do
+
+        let whenParsesToList result assertions = do
+                it "parses to a list" $
+                    result `shouldSatisfy` is (_Right._ELit._LitList)
+                when (is _Right result) assertions
+
+            listContent = view (_Right._ELit._LitList)
+
+        context "empty list literal" $ do
+            let result = parseExpr "[]"
+            whenParsesToList result $ do
+                it "has the expected content" $
+                    listContent result `shouldSatisfy` is _Empty
+
+        context "singleton list literal" $ do
+            let result = parseExpr "[1]"
+            whenParsesToList result $ do
+                it "has the expected content" $
+                    listContent result `shouldBe` [ELit (LitInt 1)]
+
+        context "comma-separated list entries" $ do
+            let result = parseExpr "[1,2]"
+            whenParsesToList result $ do
+                it "has the expected content" $
+                    listContent result `shouldBe` [ ELit (LitInt 1)
+                                                  , ELit (LitInt 2)
+                                                  ]
+
+        context "optional leading and trailing commas" $ do
+            let result = parseExpr "[,1,2,]"
+            whenParsesToList result $ do
+                it "has the expected content" $
+                    listContent result `shouldBe` [ ELit (LitInt 1)
+                                                  , ELit (LitInt 2)
+                                                  ]
+
+    describe "record literal" $ do
+
+        let whenParsesToRecord result assertions = do
+                it "parses to a record" $
+                    result `shouldSatisfy` is (_Right._ELit._LitRecord)
+                when (is _Right result) assertions
+
+            recordContent :: Either Doc Expr -> [(Text, Integer)]
+            recordContent =
+                fmap (\ (x, ELit (LitInt y)) -> (x^.text, y))
+                . view (_Right._ELit._LitRecord)
+
+        context "empty record" $ do
+            let result = parseExpr "{}"
+            whenParsesToRecord result $ do
+                it "has the expected content" $
+                    recordContent result `shouldSatisfy` is _Empty
+
+        context "single field" $ do
+            let result = parseExpr "{x:1}"
+            whenParsesToRecord result $ do
+                it "has the expected content" $
+                    recordContent result `shouldBe` [("x", 1)]
+
+        context "comma-separated fields" $ do
+            let result = parseExpr "{x:1,y:2}"
+            whenParsesToRecord result $ do
+                it "has the expected content" $
+                    recordContent result `shouldBe` [ ("x", 1)
+                                                    , ("y", 2)
+                                                    ]
+
+        context "optional leading and trailing commas" $ do
+            let result = parseExpr "{,x:1,y:2,}"
+            whenParsesToRecord result $ do
+                it "has the expected content" $
+                    recordContent result `shouldBe` [ ("x", 1)
+                                                    , ("y", 2)
+                                                    ]
