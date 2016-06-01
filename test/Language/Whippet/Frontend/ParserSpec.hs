@@ -30,8 +30,9 @@ resultToEither :: Trifecta.Result a -> Either Doc a
 resultToEither (Trifecta.Success x) = Right x
 resultToEither (Trifecta.Failure e) = Left ("\n" <> e)
 
-parseFile name = do
-    content <- runIO (loadResource name)
+parseFileFromResources :: Trifecta.Parser a -> FilePath -> IO (Either Doc a)
+parseFileFromResources parser name = do
+    content <- loadResource name
     pure (resultToEither (parse content))
   where
     loadResource name = do
@@ -40,7 +41,10 @@ parseFile name = do
 
     parse content =
         let delta = Trifecta.Directed (fromString name) 0 0 0 0
-        in Trifecta.parseByteString (Parser.ast <* Trifecta.eof) delta (fromString content)
+        in Trifecta.parseByteString parser delta (fromString content)
+
+parseFile name =
+    runIO $ parseFileFromResources (Parser.ast <* Trifecta.eof) name
 
 astHasIdentifier :: Text -> ParsedAst -> Bool
 astHasIdentifier s =
@@ -341,6 +345,9 @@ spec = do
 
     let parseExpr :: BS.ByteString -> Either Doc Expr
         parseExpr = resultToEither . Trifecta.parseByteString (Parser.expr <* Trifecta.eof) mempty
+
+        parseExprFromFile file = runIO $
+            parseFileFromResources (Parser.expr <* Trifecta.eof) file
 
     describe "variable references" $ do
 
