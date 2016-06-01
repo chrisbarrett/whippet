@@ -5,8 +5,10 @@ module Language.Whippet.Frontend.Parser where
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Trans           (MonadIO)
-import           Data.ByteString.Internal      as BSI
-import           Data.ByteString.Lazy          as BS
+import qualified Data.ByteString.Lazy          as BS
+import qualified Data.Char                     as Char
+import qualified Data.List                     as List
+import qualified Data.Map.Lazy                 as Map
 import qualified Data.Maybe                    as Maybe
 import           Data.Monoid                   ((<>))
 import           Data.String                   (fromString)
@@ -15,8 +17,9 @@ import qualified Data.Text                     as Text
 import           Language.Whippet.Frontend.AST
 import           Text.Parser.Expression
 import           Text.Parser.LookAhead         (lookAhead)
+import qualified Text.Parser.Token             as Token
 import           Text.Parser.Token.Style
-import           Text.Trifecta                 hiding (ident)
+import           Text.Trifecta                 hiding (ident, stringLiteral)
 import qualified Text.Trifecta                 as Trifecta
 import qualified Text.Trifecta.Delta           as Trifecta
 
@@ -136,6 +139,7 @@ expr =
   where
     term =  variable
         <|> numberLiteral
+        <|> stringLiteral
 
     variable =
         choice [ EVar <$> ident
@@ -144,6 +148,36 @@ expr =
 
     numberLiteral =
         ELit . (either LitInt LitScientific) <$> integerOrScientific
+
+    doubleQuote =
+        char '"'
+
+    stringLiteral :: Parser Expr
+    stringLiteral = do
+        let start = doubleQuote <?> "start of string (double-quotes)"
+            content = escapeSequence <|> anyChar
+            end = doubleQuote <?> "end of string (double-quotes)"
+        str <- start *> token (content `manyTill` end)
+        pure ((ELit . LitString) (Text.pack str))
+        <?> "string"
+      where
+        escapeSequence :: Parser Char
+        escapeSequence = do
+            ch <- char '\\' *> anyChar
+            case Map.lookup ch escapeCodes of
+              Just c  -> pure c
+              Nothing -> fail "Invalid escape sequence"
+
+        escapeCodes = Map.fromList
+                      [ ('\"', '\"')
+                      , ('\\', '\\')
+                      , ('/', '/')
+                      , ('n', '\n')
+                      , ('r', '\r')
+                      , ('f', '\f')
+                      , ('t', '\t')
+                      , ('b', '\b')
+                      ]
 
 -- * Helpers
 

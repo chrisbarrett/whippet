@@ -443,3 +443,30 @@ spec = do
             let result = parseExpr "-1e-6"
             it "parses to a float" $
                 result `shouldSatisfy` is (_Right._ELit._LitScientific)
+
+    describe "string literal" $ do
+
+        let whenParsesToString result assertions = do
+                it "parses to a string" $
+                    result `shouldSatisfy` is (_Right._ELit._LitString)
+                when (is _Right result) assertions
+
+            stringContent = view (_Right._ELit._LitString)
+
+        context "simple string literal" $ do
+            result <- parseExprFromFile "SimpleStringLiteral.whippet"
+            whenParsesToString result $ do
+                it "has the expected content" $
+                    stringContent result `shouldBe` "foo"
+
+        context "multiline string literal" $ do
+            result <- parseExprFromFile "MultilineStringLiteral.whippet"
+            whenParsesToString result $ do
+                it "has the expected content" $
+                    stringContent result `shouldBe` "foo\n bar"
+
+        context "string literal with escape sequence" $ do
+            result <- parseExprFromFile "StringLiteralWithEscapes.whippet"
+            whenParsesToString result $ do
+                it "has the expected content" $
+                    stringContent result `shouldBe` "foo\nbar"
