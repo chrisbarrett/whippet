@@ -5,11 +5,6 @@ module Language.Whippet.Frontend.Parser where
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Trans           (MonadIO)
-import qualified Data.ByteString.Lazy          as BS
-import qualified Data.Char                     as Char
-import qualified Data.List                     as List
-import qualified Data.Map.Lazy                 as Map
-import qualified Data.Maybe                    as Maybe
 import           Data.Monoid                   ((<>))
 import           Data.String                   (fromString)
 import           Data.Text                     (Text)
@@ -17,7 +12,6 @@ import qualified Data.Text                     as Text
 import           Language.Whippet.Frontend.AST
 import           Text.Parser.Expression
 import           Text.Parser.LookAhead         (lookAhead)
-import qualified Text.Parser.Token             as Token
 import           Text.Parser.Token.Style
 import           Text.Trifecta                 hiding (ident, stringLiteral)
 import qualified Text.Trifecta                 as Trifecta
