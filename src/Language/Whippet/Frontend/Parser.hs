@@ -153,31 +153,25 @@ numberLiteral =
 
 stringLiteral :: Parser Expr
 stringLiteral = do
-    let start = doubleQuote <?> "start of string (double-quotes)"
-        content = escapeSequence <|> anyChar
-        end = doubleQuote <?> "end of string (double-quotes)"
+    let start   = char '"' <?> "start of string (double-quotes)"
+        content = (escapeSequence <|> anyChar) <?> "string content"
+        end     = char '"' <?> "end of string (double-quotes)"
     str <- start *> token (content `manyTill` end)
     pure ((ELit . LitString) (Text.pack str))
     <?> "string"
   where
     escapeSequence = do
         ch <- char '\\' *> anyChar
-        case Map.lookup ch escapeCodes of
-          Just c  -> pure c
-          Nothing -> fail "Invalid escape sequence"
-
-    doubleQuote = char '"'
-
-    escapeCodes = Map.fromList
-                  [ ('\"', '\"')
-                  , ('\\', '\\')
-                  , ('/', '/')
-                  , ('n', '\n')
-                  , ('r', '\r')
-                  , ('f', '\f')
-                  , ('t', '\t')
-                  , ('b', '\b')
-                  ]
+        case ch of
+          '\"' -> pure '\"'
+          '\\' -> pure '\\'
+          '/'  -> pure '/'
+          'n'  -> pure '\n'
+          'r'  -> pure '\r'
+          'f'  -> pure '\f'
+          't'  -> pure '\t'
+          'b'  -> pure '\b'
+          _    -> fail "Invalid escape sequence"
 
 -- * Helpers
 
