@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Whippet.Frontend.ParserSpec where
@@ -399,13 +400,13 @@ spec = do
 
         context "underscore" $ do
             let result = parseExpr "_"
-            whenParsesToHole result $ do
+            whenParsesToHole result $
                 it "has the expected identifier" $
                     holeContent result `shouldBe` "_"
 
         context "named hole" $ do
             let result = parseExpr "_1"
-            whenParsesToHole result $ do
+            whenParsesToHole result $
                 it "has the expected identifier" $
                     holeContent result `shouldBe` "_1"
 
@@ -471,19 +472,19 @@ spec = do
 
         context "simple string literal" $ do
             result <- parseExprFromFile "SimpleStringLiteral.whippet"
-            whenParsesToString result $ do
+            whenParsesToString result $
                 it "has the expected content" $
                     stringContent result `shouldBe` "foo"
 
         context "multiline string literal" $ do
             result <- parseExprFromFile "MultilineStringLiteral.whippet"
-            whenParsesToString result $ do
+            whenParsesToString result $
                 it "has the expected content" $
                     stringContent result `shouldBe` "foo\n bar"
 
         context "string literal with escape sequence" $ do
             result <- parseExprFromFile "StringLiteralWithEscapes.whippet"
-            whenParsesToString result $ do
+            whenParsesToString result $
                 it "has the expected content" $
                     stringContent result `shouldBe` "foo\nbar"
 
@@ -498,19 +499,19 @@ spec = do
 
         context "empty list literal" $ do
             let result = parseExpr "[]"
-            whenParsesToList result $ do
+            whenParsesToList result $
                 it "has the expected content" $
                     listContent result `shouldSatisfy` is _Empty
 
         context "singleton list literal" $ do
             let result = parseExpr "[1]"
-            whenParsesToList result $ do
+            whenParsesToList result $
                 it "has the expected content" $
                     listContent result `shouldBe` [ELit (LitInt 1)]
 
         context "comma-separated list entries" $ do
             let result = parseExpr "[1,2]"
-            whenParsesToList result $ do
+            whenParsesToList result $
                 it "has the expected content" $
                     listContent result `shouldBe` [ ELit (LitInt 1)
                                                   , ELit (LitInt 2)
@@ -518,7 +519,7 @@ spec = do
 
         context "optional leading and trailing commas" $ do
             let result = parseExpr "[,1,2,]"
-            whenParsesToList result $ do
+            whenParsesToList result $
                 it "has the expected content" $
                     listContent result `shouldBe` [ ELit (LitInt 1)
                                                   , ELit (LitInt 2)
@@ -538,19 +539,19 @@ spec = do
 
         context "empty record" $ do
             let result = parseExpr "{}"
-            whenParsesToRecord result $ do
+            whenParsesToRecord result $
                 it "has the expected content" $
                     recordContent result `shouldSatisfy` is _Empty
 
         context "single field" $ do
             let result = parseExpr "{x:1}"
-            whenParsesToRecord result $ do
+            whenParsesToRecord result $
                 it "has the expected content" $
                     recordContent result `shouldBe` [("x", 1)]
 
         context "comma-separated fields" $ do
             let result = parseExpr "{x:1,y:2}"
-            whenParsesToRecord result $ do
+            whenParsesToRecord result $
                 it "has the expected content" $
                     recordContent result `shouldBe` [ ("x", 1)
                                                     , ("y", 2)
@@ -558,7 +559,7 @@ spec = do
 
         context "optional leading and trailing commas" $ do
             let result = parseExpr "{,x:1,y:2,}"
-            whenParsesToRecord result $ do
+            whenParsesToRecord result $
                 it "has the expected content" $
                     recordContent result `shouldBe` [ ("x", 1)
                                                     , ("y", 2)
