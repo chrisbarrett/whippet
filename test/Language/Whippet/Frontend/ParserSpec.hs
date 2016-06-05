@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 module Language.Whippet.Frontend.ParserSpec where
 
 import           Control.Lens
@@ -50,6 +51,28 @@ parseFile name =
 astHasIdentifier :: Text -> ParsedAst -> Bool
 astHasIdentifier s =
    (==) s . view (_Right.identifier.text)
+
+
+fieldToText :: Field -> Text
+fieldToText Field {..} =
+    ident <> ": " <> typeToText _fieldType
+  where
+    ident = _identLabel _fieldIdent
+
+typeToText :: Type -> Text
+
+typeToText (TyNominal i) =
+    _identLabel i
+
+typeToText (TyApp x y) =
+    Text.unwords [typeToText x, typeToText y]
+
+typeToText (TyStructural fs) =
+    "{" <> Text.intercalate ", " (map fieldToText fs) <> "}"
+
+typeToText (TyFun a b) =
+    "(" <> typeToText a <> " -> " <> typeToText b <> ")"
+
 
 spec :: Spec
 spec = do
