@@ -30,29 +30,34 @@ ast :: Parser AST
 ast = whiteSpace *> (astModule <|> astSignature <|> astDecl)
 
 astSignature :: Parser AST
-astSignature = do
-    reserved "signature"
-    AstSignature <$> ident <*> braces (many declaration)
-    <?> "signature"
+astSignature =
+    parser <?> "signature"
+  where
+    parser = do
+      reserved "signature"
+      AstSignature <$> ident <*> braces (many declaration)
 
 astModule :: Parser AST
-astModule = do
-    reserved "module"
-    AstModule <$> ident <*> braces (many ast)
-    <?> "module"
+astModule =
+    parser <?> "module"
+  where
+    parser = do
+        reserved "module"
+        AstModule <$> ident <*> braces (many ast)
 
 astDecl :: Parser AST
 astDecl = AstDecl <$> declaration
 
 decType :: Parser Decl
-decType = do
-    reserved "type"
-    id <- ident
-    tyArgs <- many typeParameter
-    concreteType id tyArgs <|> abstractType id tyArgs
-    <?> "type declaration"
-
+decType =
+    parser <?> "type declaration"
   where
+    parser = do
+        reserved "type"
+        id <- ident
+        tyArgs <- many typeParameter
+        concreteType id tyArgs <|> abstractType id tyArgs
+
     concreteType id tyArgs = do
         equals
         optional pipe
@@ -63,33 +68,43 @@ decType = do
 
 
 constructor :: Parser Ctor
-constructor = do
-    i <- ident
-    ts <- many typeRef
-    pure (Ctor i ts)
-    <?> "constructor"
+constructor =
+    parser <?> "constructor"
+  where
+    parser = do
+        i <- ident
+        ts <- many typeRef
+        pure (Ctor i ts)
+        <?> "constructor"
 
 declaration :: Parser Decl
-declaration = decFun <|> decRecord <|> decType
+declaration =
+    parser <?> "declaration"
+  where
+    parser = decFun <|> decRecord <|> decType
 
 decFun :: Parser Decl
-decFun = do
-    reserved "let"
-    i <- ident
-    colon
-    t <- typeRef
-    pure (DecFun i t Nothing)
-    <?> "let"
+decFun =
+    parser <?> "let declaration"
+  where
+    parser = do
+        reserved "let"
+        i <- ident
+        colon
+        t <- typeRef
+        pure (DecFun i t Nothing)
 
 decRecord :: Parser Decl
-decRecord = do
-    reserved "record"
-    i <- ident
-    ts <- many typeParameter
-    equals
-    fs <- recordFields
-    pure (DecRecordType i ts fs)
-    <?> "record declaration"
+decRecord =
+    parser <?> "record declaration"
+  where
+    parser = do
+        reserved "record"
+        i <- ident
+        ts <- many typeParameter
+        equals
+        fs <- recordFields
+        pure (DecRecordType i ts fs)
 
 
 typeRef :: Parser Type
@@ -109,9 +124,10 @@ structuralType =
     <?> "structural type"
 
 nominalType :: Parser Type
-nominalType = do
-    id <- ident <?> "type name"
-    pure (TyNominal id)
+nominalType =
+    parser <?> "type name"
+  where
+    parser = TyNominal <$> ident
 
 recordFields :: Parser [Field]
 recordFields = braces (optional comma *> field `sepBy1` comma)
@@ -124,7 +140,10 @@ field = do
     pure (Field i t)
 
 typeParameter :: Parser TypeParameter
-typeParameter = TypeParameter <$> ident <?> "type parameter"
+typeParameter =
+    parser <?> "type parameter"
+  where
+    parser = TypeParameter <$> ident
 
 -- * Expression
 
@@ -160,30 +179,43 @@ expr = do
 
 lambda :: Parser Expr
 lambda =
-    ELam <$> pat
-    <?> "lambda expression"
+    parser <?> "lambda expression"
+  where
+    parser = ELam <$> pat
 
 typeAnnotation :: Parser Type
-typeAnnotation = do
-    colon <?> "type annotation"
-    choice [nominalType, structuralType, parens typeRef]
+typeAnnotation =
+    parser <?> "type annotation"
+  where
+    parser = do
+      colon
+      choice [nominalType, structuralType, parens typeRef]
 
 ifThenElse :: Parser Expr
 ifThenElse =
-    EIf <$> (reserved "if" *> expr)
-        <*> (reserved "then" *> expr)
-        <*> (reserved "else" *> expr)
+    parser <?> "if expression"
+  where
+    parser =
+        EIf <$> (reserved "if" *> expr)
+            <*> (reserved "then" *> expr)
+            <*> (reserved "else" *> expr)
 
 fn :: Parser Expr
-fn = do
-    reserved "fn"
-    EFn <$> braces (pat `sepBy1` pipe)
+fn =
+    parser <?> "fn"
+  where
+    parser = do
+        reserved "fn"
+        EFn <$> braces (pat `sepBy1` pipe)
 
 discriminator :: Parser Discriminator
-discriminator = do
-    v <- ident
-    ty <- optional typeAnnotation
-    pure (DVar v ty)
+discriminator =
+    parser <?> "pattern discriminator"
+  where
+    parser = do
+        v <- ident
+        ty <- optional typeAnnotation
+        pure (DVar v ty)
 
 pat :: Parser Pat
 pat = do
@@ -192,26 +224,31 @@ pat = do
     pure (Pat d e)
 
 hole :: Parser Expr
-hole = do
-    (s :~ span) <- spanned (Trifecta.ident holeStyle)
-    pure (EHole (Ident span s))
-    <?> "hole"
-    where
-      holeStyle = style & styleStart .~ (letter <|> char '_')
+hole =
+    parser <?> "hole"
+  where
+    parser = do
+      let holeStyle = style & styleStart .~ (letter <|> char '_')
+      (s :~ span) <- spanned (Trifecta.ident holeStyle)
+      pure (EHole (Ident span s))
+
 
 numberLiteral :: Parser Expr
 numberLiteral =
-    ELit . either LitInt LitScientific <$> integerOrScientific
+    parser <?> "number"
+  where
+    parser = ELit . either LitInt LitScientific <$> integerOrScientific
 
 stringLiteral :: Parser Expr
-stringLiteral = do
-    let start   = char '"' <?> "start of string (double-quotes)"
-        content = (escapeSequence <|> anyChar) <?> "string content"
-        end     = char '"' <?> "end of string (double-quotes)"
-    str <- start *> token (content `manyTill` end)
-    pure ((ELit . LitString) (Text.pack str))
-    <?> "string"
+stringLiteral =
+    parser <?> "string"
   where
+    parser = do
+        let start   = char '"' <?> "start of string (double-quotes)"
+            content = (escapeSequence <|> anyChar) <?> "string content"
+            end     = char '"' <?> "end of string"
+        str <- start *> token (content `manyTill` end)
+        pure ((ELit . LitString) (Text.pack str))
     escapeSequence = do
         ch <- char '\\' *> anyChar
         case ch of
@@ -227,12 +264,17 @@ stringLiteral = do
 
 listLiteral :: Parser Expr
 listLiteral =
-    ELit . LitList <$> brackets (optional comma *> expr `sepEndBy` comma)
+    parser <?> "list"
+  where
+    parser =
+      ELit . LitList <$> brackets (optional comma *> expr `sepEndBy` comma)
 
 recordLiteral :: Parser Expr
 recordLiteral =
-    ELit . LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
+    parser <?> "record"
   where
+    parser = ELit . LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
+
     field :: Parser (Ident, Expr)
     field = do
         f <- ident
