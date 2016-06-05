@@ -76,21 +76,26 @@ typeToText (TyFun a b) =
 emptySpan :: Trifecta.Span
 emptySpan = Trifecta.Span mempty mempty mempty
 
-nominalType :: Text -> Type
-nominalType = TyNominal . Ident emptySpan
+ident :: Text -> Ident
+ident = Ident emptySpan
 
-intLiteral :: Integer -> Expr
-intLiteral = ELit . LitInt
+nominalType :: Text -> Type
+nominalType = TyNominal . ident
+
+int :: Integer -> Expr
+int = ELit . LitInt
+
+var :: Text -> Expr
+var = EVar . Ident emptySpan
 
 
 spec :: Spec
 spec = do
 
-    -- Modules
-
     describe "parsing modules" $ do
         let body :: ParsedAst -> [AST]
-            body = view (_Right._AstModule._2)
+            body ast =
+                ast ^. _Right._AstModule._2
 
             whenParsesToModule result assertions = do
                 it "parses to a module" $
@@ -105,21 +110,20 @@ spec = do
                 it "has an empty body" $
                     body result `shouldSatisfy` is _Empty
 
-    -- Signatures
 
     describe "parsing signatures" $ do
 
-        let identifiers :: ParsedAst -> [Text]
-            identifiers =
-                fmap (view (identifier.text)) . view (_Right._AstSignature._2)
+        let identifiers :: ParsedAst -> [Ident]
+            identifiers ast =
+                ast ^.. _Right._AstSignature._2.traverse.identifier
 
             types :: ParsedAst -> [Text]
-            types =
-                fmap (view (_DecFun._2.to typeToText))
-                . view (_Right._AstSignature._2)
+            types ast =
+                ast ^.. _Right._AstSignature._2.traverse._DecFun._2.to typeToText
 
             decls :: ParsedAst -> [Decl]
-            decls = view (_Right._AstSignature._2)
+            decls ast =
+                ast ^. _Right._AstSignature._2
 
             declsCount :: ParsedAst -> Int
             declsCount = length . decls
@@ -128,7 +132,6 @@ spec = do
                 it "parses to a signature" $
                   result `shouldSatisfy` is (_Right._AstSignature)
                 when (is _Right result) assertions
-
 
         context "empty signature" $ do
             result <- parseFile "EmptySignature.whippet"
@@ -142,7 +145,7 @@ spec = do
             result <- parseFile "SignatureWithFn.whippet"
             whenParsesToSignature result $ do
                 it "has the expected fn name" $
-                    identifiers result `shouldBe` ["foo"]
+                    identifiers result `shouldBe` [ident "foo"]
                 it "has one inner declaration" $
                     declsCount result `shouldBe` 1
                 it "has the expected types" $
@@ -154,7 +157,7 @@ spec = do
                 it "has two inner declarations" $
                     declsCount result `shouldBe` 2
                 it "has the expected fn names" $
-                    identifiers result `shouldBe` ["foo", "bar"]
+                    identifiers result `shouldBe` [ident "foo", ident "bar"]
                 it "has the expected types" $
                     types result `shouldBe` ["(A -> B)", "(B -> C)"]
 
@@ -162,7 +165,7 @@ spec = do
             result <- parseFile "SignatureWithAbsType.whippet"
             whenParsesToSignature result $
                 it "has the expected type name" $
-                    identifiers result `shouldBe` ["T"]
+                    identifiers result `shouldBe` [ident "T"]
 
         context "realistic signature" $ do
             result <- parseFile "Option.whippet"
@@ -170,27 +173,25 @@ spec = do
                 it "has the expected module name" $
                     result `shouldSatisfy` astHasIdentifier "Option"
                 it "has the expected identifiers" $
-                    identifiers result `shouldBe` [ "T"
-                                                  , "some?"
-                                                  , "none?"
-                                                  , "get"
-                                                  , "map"
-                                                  , "filter"
+                    identifiers result `shouldBe` [ ident "T"
+                                                  , ident "some?"
+                                                  , ident "none?"
+                                                  , ident "get"
+                                                  , ident "map"
+                                                  , ident "filter"
                                                   ]
 
 
     -- Type declarations
 
     describe "parsing a record declaration" $ do
-        let fieldsFromAst :: ParsedAst -> [Field]
-            fieldsFromAst =
-                view (_Right._AstDecl._DecRecordType._3)
+        let fieldLabels :: ParsedAst -> [Ident]
+            fieldLabels ast =
+                ast ^.. _Right._AstDecl._DecRecordType._3.traverse.identifier
 
-            fieldLabels =
-                fmap (view (identifier.text)) . fieldsFromAst
-
-            fieldTypeNames =
-                fmap (view (fieldType.to typeIdentifiers._Just.each.text)) . fieldsFromAst
+            fieldTypes :: ParsedAst -> [Type]
+            fieldTypes ast =
+                ast ^.. _Right._AstDecl._DecRecordType._3.traverse.fieldType
 
             whenParsesToRecordDecl result assertions = do
                 it "parses to a record decl" $
@@ -204,43 +205,41 @@ spec = do
                 it "has the expected identifier" $
                     result `shouldSatisfy` astHasIdentifier "IntPair"
                 it "has the expected fields" $
-                    fieldLabels result `shouldBe` ["fst", "snd"]
+                    fieldLabels result `shouldBe` [ident "fst", ident "snd"]
                 it "has the expected field types" $
-                    fieldTypeNames result `shouldBe` ["Int", "Int"]
+                    fieldTypes result `shouldBe` [nominalType "Int", nominalType "Int"]
 
         context "record type with type parameters" $ do
             result <- parseFile "Pair.whippet"
             whenParsesToRecordDecl result $ do
                 it "has the expected fields" $
-                    fieldLabels result `shouldBe` ["fst", "snd"]
+                    fieldLabels result `shouldBe` [ident "fst", ident "snd"]
                 it "has the expected field types" $
-                    fieldTypeNames result `shouldBe` ["a", "b"]
+                    fieldTypes result `shouldBe` [nominalType "a", nominalType "b"]
 
         context "record type with comma before first field" $ do
             result <- parseFile "RecordOptionalLeadingComma.whippet"
             whenParsesToRecordDecl result $
                 it "has the expected fields" $
-                    fieldLabels result `shouldBe` ["fst", "snd"]
+                    fieldLabels result `shouldBe` [ident "fst", ident "snd"]
 
     describe "parsing a type declaration" $ do
         let ctorsFromAst :: ParsedAst -> [Ctor]
-            ctorsFromAst =
-                view (_Right._AstDecl._DecDataType._3)
+            ctorsFromAst ast =
+                ast ^. _Right._AstDecl._DecDataType._3
 
-            typeParameters :: ParsedAst -> [Text]
-            typeParameters =
-                fmap (view (identifier.text))
-                . view (_Right._AstDecl._DecDataType._2)
+            typeParameters :: ParsedAst -> [Ident]
+            typeParameters ast =
+                ast ^.. _Right._AstDecl._DecDataType._2.traverse.identifier
 
-            ctorLabels :: ParsedAst -> [Text]
-            ctorLabels =
-                fmap (view (identifier.text)) . ctorsFromAst
+            ctorLabels :: ParsedAst -> [Ident]
+            ctorLabels ast =
+                ast ^.. to ctorsFromAst.traverse.identifier
 
-            ctorParamTypes :: ParsedAst -> [Text]
-            ctorParamTypes =
-                fmap (view (to typeIdentifiers._Just.each.text))
-                . concatMap (view ctorParams)
-                . ctorsFromAst
+            ctorParamTypes :: ParsedAst -> [Ident]
+            ctorParamTypes ast =
+                ast ^.. to ctorsFromAst.traverse.ctorParams.traverse
+                       .to typeIdentifiers._Just.each
 
             whenParsesToTypeDecl result assertions = do
                 it "parses to a type decl" $
@@ -263,49 +262,50 @@ spec = do
             result <- parseFile "Unit.whippet"
             whenParsesToTypeDecl result $ do
                 it "has the expected constructor" $
-                    ctorLabels result `shouldBe` ["Unit"]
+                    ctorLabels result `shouldBe` [ident "Unit"]
                 it "has no parameters" $
-                    ctorParamTypes result `shouldBe` []
+                    ctorParamTypes result `shouldSatisfy` is _Empty
 
         context "multiple nullary constructors" $ do
             result <- parseFile "Bool.whippet"
             whenParsesToTypeDecl result $ do
                 it "has the expected constructors" $
-                    ctorLabels result `shouldBe` ["True", "False"]
+                    ctorLabels result `shouldBe` [ident "True", ident "False"]
                 it "has no parameters" $
-                    ctorParamTypes result `shouldBe` []
+                    ctorParamTypes result `shouldSatisfy` is _Empty
 
         context "first constructor has a leading pipe" $ do
             result <- parseFile "CtorOptionalPipe.whippet"
             whenParsesToTypeDecl result $
                 it "has the expected constructors" $
-                    ctorLabels result `shouldBe` ["True", "False"]
+                    ctorLabels result `shouldBe` [ident "True", ident "False"]
 
         context "single type parameter" $ do
             result <- parseFile "PhantomType.whippet"
             whenParsesToTypeDecl result $
                 it "has the expected type parameter" $
-                    typeParameters result `shouldBe` ["a"]
+                    typeParameters result `shouldBe` [ident "a"]
 
         context "multiple type parameters" $ do
             result <- parseFile "CoerceType.whippet"
             whenParsesToTypeDecl result $
                 it "has the expected type parameters" $
-                    typeParameters result `shouldBe` ["source", "dest"]
+                    typeParameters result `shouldBe` [ident "source", ident "dest"]
 
         context "constructor reference to type parameters" $ do
             result <- parseFile "Either.whippet"
             whenParsesToTypeDecl result $
                 it "has the expected ctor parameter types" $
-                    ctorParamTypes result `shouldBe` ["e", "a"]
+                    ctorParamTypes result `shouldBe` [ident "e", ident "a"]
 
     describe "parsing a function signature" $ do
         let ident :: ParsedAst -> Text
-            ident = view (_Right._AstDecl._DecFun._1.identifier.text)
+            ident ast =
+                ast ^. _Right._AstDecl._DecFun._1.identifier.text
 
             fnType :: ParsedAst -> Text
-            fnType =
-                view (_Right._AstDecl._DecFun._2.to typeToText)
+            fnType ast =
+                ast ^. _Right._AstDecl._DecFun._2.to typeToText
 
             whenParsesToSigWithFn result assertions = do
                 it "parses to a function signature" $
@@ -376,11 +376,14 @@ spec = do
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(A -> {unpack: A})"
 
+
     let parseExpr :: BS.ByteString -> Either Doc Expr
-        parseExpr = resultToEither . Trifecta.parseByteString (Parser.expr <* Trifecta.eof) mempty
+        parseExpr =
+            resultToEither . Trifecta.parseByteString (Parser.expr <* Trifecta.eof) mempty
 
         parseExprFromFile file = runIO $
             parseFileFromResources (Parser.expr <* Trifecta.eof) file
+
 
     describe "variable references" $ do
 
@@ -389,14 +392,14 @@ spec = do
                   result `shouldSatisfy` is (_Right._EVar)
                 when (is _Right result) assertions
 
-            ident :: Either Doc Expr -> Text
-            ident = view (_Right._EVar.identifier.text)
+            label :: Either Doc Expr -> Text
+            label = view (_Right._EVar.identifier.text)
 
         context "identifier ending with an underscore" $ do
             let result = parseExpr "x_"
             whenParsesToVar result $
                 it "has the expected identifier" $
-                    ident result `shouldBe` "x_"
+                    label result `shouldBe` "x_"
 
         context "identifier starting with a question mark" $ do
             let result = parseExpr "?x"
@@ -407,7 +410,7 @@ spec = do
             let result = parseExpr "x?"
             whenParsesToVar result $
                 it "has the expected identifier" $
-                    ident result `shouldBe` "x?"
+                    label result `shouldBe` "x?"
 
         context "identifier starting with a number" $ do
             let result = parseExpr "1x"
@@ -418,7 +421,8 @@ spec = do
             let result = parseExpr "x1"
             whenParsesToVar result $
                 it "has the expected identifier" $
-                    ident result `shouldBe` "x1"
+                    label result `shouldBe` "x1"
+
 
     describe "holes" $ do
 
@@ -442,56 +446,58 @@ spec = do
                 it "has the expected identifier" $
                     holeContent result `shouldBe` "_1"
 
+
+    let itIsInt result =
+            it "parses to an integer" $
+                result `shouldSatisfy` is (_Right._ELit._LitInt)
+
     describe "integer literals" $ do
 
         context "natural number" $ do
             let result = parseExpr "1"
-            it "parses to an integer" $
-                result `shouldSatisfy` is (_Right._ELit._LitInt)
+            itIsInt result
 
         context "signed positive integer" $ do
             let result = parseExpr "+1"
-            it "parses to an integer" $
-                result `shouldSatisfy` is (_Right._ELit._LitInt)
+            itIsInt result
 
         context "signed negative integer" $ do
             let result = parseExpr "-1"
-            it "parses to an integer" $
-                result `shouldSatisfy` is (_Right._ELit._LitInt)
+            itIsInt result
+
+
+    let itIsFloat result =
+            it "parses to a float" $
+                result `shouldSatisfy` is (_Right._ELit._LitScientific)
 
     describe "floating point literals" $ do
 
         context "unsigned float" $ do
             let result = parseExpr "1.5"
-            it "parses to a float number" $
-                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+            itIsFloat result
 
         context "signed positive float" $ do
             let result = parseExpr "+1.5"
-            it "parses to a float number" $
-                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+            itIsFloat result
 
         context "signed negative float" $ do
             let result = parseExpr "-1.5"
-            it "parses to a float number" $
-                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+            itIsFloat result
 
     describe "scientific literals" $ do
 
         context "unsigned scientific" $ do
             let result = parseExpr "1e-6"
-            it "parses to a float" $
-                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+            itIsFloat result
 
         context "positive scientific" $ do
             let result = parseExpr "+1e-6"
-            it "parses to a float" $
-                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+            itIsFloat result
 
         context "negative scientific" $ do
             let result = parseExpr "-1e-6"
-            it "parses to a float" $
-                result `shouldSatisfy` is (_Right._ELit._LitScientific)
+            itIsFloat result
+
 
     describe "string literal" $ do
 
@@ -520,6 +526,7 @@ spec = do
                 it "has the expected content" $
                     stringContent result `shouldBe` "foo\nbar"
 
+
     describe "list literal" $ do
 
         let whenParsesToList result assertions = do
@@ -539,23 +546,20 @@ spec = do
             let result = parseExpr "[1]"
             whenParsesToList result $
                 it "has the expected content" $
-                    listContent result `shouldBe` [ELit (LitInt 1)]
+                    listContent result `shouldBe` [int 1]
 
         context "comma-separated list entries" $ do
             let result = parseExpr "[1,2]"
             whenParsesToList result $
                 it "has the expected content" $
-                    listContent result `shouldBe` [ ELit (LitInt 1)
-                                                  , ELit (LitInt 2)
-                                                  ]
+                    listContent result `shouldBe` [int 1, int 2]
 
         context "optional leading and trailing commas" $ do
             let result = parseExpr "[,1,2,]"
             whenParsesToList result $
                 it "has the expected content" $
-                    listContent result `shouldBe` [ ELit (LitInt 1)
-                                                  , ELit (LitInt 2)
-                                                  ]
+                    listContent result `shouldBe` [int 1, int 2]
+
 
     describe "record literal" $ do
 
@@ -564,10 +568,9 @@ spec = do
                     result `shouldSatisfy` is (_Right._ELit._LitRecord)
                 when (is _Right result) assertions
 
-            recordContent :: Either Doc Expr -> [(Text, Integer)]
-            recordContent =
-                fmap (\ (x, ELit (LitInt y)) -> (x^.text, y))
-                . view (_Right._ELit._LitRecord)
+            recordContent :: Either Doc Expr -> [(Ident, Expr)]
+            recordContent ast =
+                ast ^. _Right._ELit._LitRecord
 
         context "empty record" $ do
             let result = parseExpr "{}"
@@ -579,23 +582,24 @@ spec = do
             let result = parseExpr "{x:1}"
             whenParsesToRecord result $
                 it "has the expected content" $
-                    recordContent result `shouldBe` [("x", 1)]
+                    recordContent result `shouldBe` [(ident "x", int 1)]
 
         context "comma-separated fields" $ do
             let result = parseExpr "{x:1,y:2}"
             whenParsesToRecord result $
                 it "has the expected content" $
-                    recordContent result `shouldBe` [ ("x", 1)
-                                                    , ("y", 2)
+                    recordContent result `shouldBe` [ (ident "x", int 1)
+                                                    , (ident "y", int 2)
                                                     ]
 
         context "optional leading and trailing commas" $ do
             let result = parseExpr "{,x:1,y:2,}"
             whenParsesToRecord result $
                 it "has the expected content" $
-                    recordContent result `shouldBe` [ ("x", 1)
-                                                    , ("y", 2)
+                    recordContent result `shouldBe` [ (ident "x", int 1)
+                                                    , (ident "y", int 2)
                                                     ]
+
 
     describe "Type annotations" $ do
 
@@ -604,13 +608,16 @@ spec = do
                     result `shouldSatisfy` is (_Right._EAnnotation)
                 when (is _Right result) assertions
 
-            annType = view (_Right._EAnnotation._2._TyNominal.text)
+            annType :: Either Doc Expr -> Maybe Type
+            annType (Right (EAnnotation _ t)) = Just t
+            annType _                         = Nothing
 
         context "simple annotation" $ do
             let result = parseExpr "1 : Int"
             whenParsesToAnnotation result $
                 it "has the expected type" $
-                    annType result `shouldBe` "Int"
+                    annType result `shouldBe` Just (nominalType "Int")
+
 
     describe "if then else" $ do
 
@@ -619,16 +626,15 @@ spec = do
                     result `shouldSatisfy` is (_Right._EIf)
                 when (is _Right result) assertions
 
-            exprs :: Either Doc Expr -> [Text]
-            exprs =
-                view (_Right.to children)
-                & (fmap.fmap) (view (_EVar.identifier.text))
+            subexpressions :: Either Doc Expr -> [Expr]
+            subexpressions = view (_Right.to children)
 
         context "simple expressions " $ do
             let result = parseExpr "if foo then bar else baz"
             whenParsesToIfThenElse result $
                 it "has the expected values" $
-                    exprs result `shouldBe` ["foo", "bar", "baz"]
+                    subexpressions result `shouldBe` [var "foo", var "bar", var "baz"]
+
 
     describe "lambda" $ do
 
@@ -638,9 +644,12 @@ spec = do
                 when (is _Right result) assertions
 
             discriminators :: Either Doc Expr -> [Discriminator]
-            discriminators =
-                view (_Right._ELam)
-                & (fmap.fmap) (view (_Pat._1))
+            discriminators expr =
+                expr ^.. _Right._ELam.traverse._Pat._1
+
+            bodyForms :: Either Doc Expr -> [Expr]
+            bodyForms expr =
+                expr ^.. _Right._ELam.traverse._Pat._2
 
             patVar :: Text -> Discriminator
             patVar x = DVar (Ident emptySpan x) Nothing
@@ -648,18 +657,13 @@ spec = do
             patVarTyped :: Text -> Type -> Discriminator
             patVarTyped x = DVar (Ident emptySpan x) . Just
 
-            bodyForms :: Either Doc Expr -> [Expr]
-            bodyForms =
-                view (_Right._ELam)
-                & (fmap.fmap) (view (_Pat._2))
-
         context "single case" $ do
             let result = parseExpr "x -> 0"
             whenParsesToLambda result $ do
                 it "has the expected binder" $
                     discriminators result `shouldBe` [patVar "x"]
                 it "has the expected body" $
-                    bodyForms result `shouldBe` [intLiteral 0]
+                    bodyForms result `shouldBe` [int 0]
 
         context "type annotation" $ do
             let result = parseExpr "x: Int -> 0"
@@ -667,4 +671,4 @@ spec = do
                 it "has the expected binder" $
                     discriminators result `shouldBe` [patVarTyped "x" (nominalType "Int")]
                 it "has the expected body" $
-                    bodyForms result `shouldBe` [intLiteral 0]
+                    bodyForms result `shouldBe` [int 0]
