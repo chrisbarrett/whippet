@@ -19,7 +19,7 @@ data AST
 
 type Var = Ident
 
-data Discriminator = DiscVar Var
+data Discriminator = DVar Var
     deriving (Eq, Ord, Show, Data)
 
 data Pat = Pat Discriminator Expr

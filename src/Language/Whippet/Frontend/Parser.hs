@@ -130,12 +130,14 @@ typeParameter = TypeParameter <$> ident <?> "type parameter"
 expr :: Parser Expr
 expr = do
     e <- term
-    t <- optional $ (colon <?> "type annotation") *> typeRef
+    t <- optional tyAnn
     case t of
       Just t -> pure (EAnnotation e t)
       Nothing -> pure e
   where
-    term =  variable
+    tyAnn = (colon <?> "type annotation") *> typeRef
+
+    term =  variableOrLambda
         <|> ifThenElse
         <|> hole
         <|> numberLiteral
@@ -143,6 +145,12 @@ expr = do
         <|> listLiteral
         <|> recordLiteral
 
+    variableOrLambda = do
+        v <- ident
+        e <- optional (rarrow *> expr)
+        case e of
+          Just t -> pure (ELam [Pat (DVar v) t])
+          Nothing -> pure (EVar v)
 
 ifThenElse :: Parser Expr
 ifThenElse =
@@ -157,10 +165,6 @@ hole = do
     <?> "hole"
     where
       holeStyle = style & styleStart .~ (letter <|> char '_')
-
-variable :: Parser Expr
-variable =
-    EVar <$> ident
 
 numberLiteral :: Parser Expr
 numberLiteral =

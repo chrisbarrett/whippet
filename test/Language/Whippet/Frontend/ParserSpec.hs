@@ -73,6 +73,7 @@ typeToText (TyStructural fs) =
 typeToText (TyFun a b) =
     "(" <> typeToText a <> " -> " <> typeToText b <> ")"
 
+emptySpan = Trifecta.Span mempty mempty mempty
 
 spec :: Spec
 spec = do
@@ -620,3 +621,31 @@ spec = do
             whenParsesToIfThenElse result $
                 it "has the expected values" $
                     exprs result `shouldBe` ["foo", "bar", "baz"]
+
+    describe "lambda" $ do
+
+        let whenParsesToLambda result assertions = do
+                it "parses to a lambda expression" $
+                    result `shouldSatisfy` is (_Right._ELam)
+                when (is _Right result) assertions
+
+            discriminators :: Either Doc Expr -> [Discriminator]
+            discriminators =
+                view (_Right._ELam)
+                & (fmap.fmap) (view (_Pat._1))
+
+            patVar :: Text -> Discriminator
+            patVar = DVar . Ident emptySpan
+
+            bodyForms :: Either Doc Expr -> [Expr]
+            bodyForms =
+                view (_Right._ELam)
+                & (fmap.fmap) (view (_Pat._2))
+
+        context "single case" $ do
+            let result = parseExpr "x -> 0"
+            whenParsesToLambda result $ do
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [patVar "x"]
+                it "has the expected body" $
+                    bodyForms result `shouldBe` [ELit (LitInt 0)]
