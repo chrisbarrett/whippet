@@ -173,7 +173,7 @@ data Lit
     deriving (Eq, Ord, Show)
 
 data Expr
-    = EAnnotate Expr Type
+    = EAnnotation Expr Type
     | EApp Expr Expr
     | EHole Ident
     | EIf Expr Expr Expr

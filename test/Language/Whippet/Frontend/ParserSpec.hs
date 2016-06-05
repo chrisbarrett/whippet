@@ -564,3 +564,18 @@ spec = do
                     recordContent result `shouldBe` [ ("x", 1)
                                                     , ("y", 2)
                                                     ]
+
+    describe "Type annotations" $ do
+
+        let whenParsesToAnnotation result assertions = do
+                it "parses to a type annotation" $
+                    result `shouldSatisfy` is (_Right._EAnnotation)
+                when (is _Right result) assertions
+
+            annType = view (_Right._EAnnotation._2._TyNominal.text)
+
+        context "simple annotation" $ do
+            let result = parseExpr "1 : Int"
+            whenParsesToAnnotation result $
+                it "has the expected type" $
+                    annType result `shouldBe` "Int"

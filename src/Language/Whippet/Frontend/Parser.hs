@@ -93,7 +93,7 @@ decRecord = do
 
 
 typeRef :: Parser Type
-typeRef = do
+typeRef =
     buildExpressionParser operators tyTerm
   where
     tyTerm =
@@ -128,8 +128,12 @@ typeParameter = TypeParameter <$> ident <?> "type parameter"
 -- * Expression
 
 expr :: Parser Expr
-expr =
-    buildExpressionParser [] term
+expr = do
+    e <- buildExpressionParser [] term
+    t <- optional (colon *> typeRef)
+    case t of
+      Just t -> pure (EAnnotation e t)
+      Nothing -> pure e
   where
     term =  variable
         <|> hole
