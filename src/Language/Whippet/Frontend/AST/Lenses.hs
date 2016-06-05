@@ -29,6 +29,12 @@ makePrisms ''Ctor
 makeLenses ''AST
 makePrisms ''AST
 
+makeLenses ''Pat
+makePrisms ''Pat
+
+makeLenses ''Discriminator
+makePrisms ''Discriminator
+
 makeLenses ''Expr
 makePrisms ''Expr
 
