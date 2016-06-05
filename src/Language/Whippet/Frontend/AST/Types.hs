@@ -1,13 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RecordWildCards    #-}
 module Language.Whippet.Frontend.AST.Types where
 
-import qualified Data.List       as List
+import           Control.Lens.Plated
+import           Data.Data
+import           Data.Data.Lens      (uniplate)
+import qualified Data.List           as List
 import           Data.Monoid
-import           Data.Scientific (Scientific)
-import           Data.Text       (Text)
-import qualified Data.Text       as Text
-import qualified Text.Trifecta   as Trifecta
+import           Data.Scientific     (Scientific)
+import           Data.Text           (Text)
+import qualified Data.Text           as Text
+import qualified Text.Trifecta       as Trifecta
 
 showRecord :: Text -> [(Text, String)] -> String
 showRecord ty fields =
@@ -22,7 +26,7 @@ data Ident = Ident {
       _identPos   :: Trifecta.Span
     , _identLabel :: Text
     }
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Data)
 
 instance Show Ident where
   show =  show . _identLabel
@@ -34,7 +38,7 @@ data Field = Field {
       _fieldIdent :: Ident
     , _fieldType  :: Type
     }
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Data)
 
 fieldToText :: Field -> Text
 fieldToText Field {..} =
@@ -52,7 +56,10 @@ data Type
     | TyStructural [Field]
     | TyApp        Type Type
     | TyFun        Type Type
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Data)
+
+instance Plated Type where
+    plate = uniplate
 
 typeToText :: Type -> Text
 
@@ -159,10 +166,10 @@ instance Show AST where
 type Var = Ident
 
 data Discriminator = DiscVar Var
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 data Pat = Pat Discriminator Expr
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 data Lit
     = LitList [Expr]
@@ -170,7 +177,7 @@ data Lit
     | LitScientific Scientific
     | LitRecord [(Ident, Expr)]
     | LitString Text
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 data Expr
     = EAnnotation Expr Type
@@ -183,4 +190,7 @@ data Expr
     | EMatch Expr [Pat]
     | EParen Expr
     | EVar Var
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
+
+instance Plated Expr where
+    plate = uniplate

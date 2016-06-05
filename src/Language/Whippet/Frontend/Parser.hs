@@ -58,7 +58,7 @@ decType = do
         optional pipe
         DecDataType id tyArgs <$> constructor `sepBy1` pipe
 
-    abstractType id tyArgs = do
+    abstractType id tyArgs =
         pure (DecAbsType id tyArgs)
 
 
@@ -129,18 +129,26 @@ typeParameter = TypeParameter <$> ident <?> "type parameter"
 
 expr :: Parser Expr
 expr = do
-    e <- buildExpressionParser [] term
-    t <- optional (colon *> typeRef)
+    e <- term
+    t <- optional $ (colon <?> "type annotation") *> typeRef
     case t of
       Just t -> pure (EAnnotation e t)
       Nothing -> pure e
   where
     term =  variable
+        <|> ifThenElse
         <|> hole
         <|> numberLiteral
         <|> stringLiteral
         <|> listLiteral
         <|> recordLiteral
+
+
+ifThenElse :: Parser Expr
+ifThenElse =
+    EIf <$> (reserved "if" *> expr)
+        <*> (reserved "then" *> expr)
+        <*> (reserved "else" *> expr)
 
 hole :: Parser Expr
 hole = do
@@ -204,7 +212,15 @@ style = emptyIdents
         & styleStart    .~ letter
         & styleLetter   .~ (alphaNum <|> oneOf "_?")
   where
-    reservedWords = ["module", "astSignature", "type", "record", "let"]
+    reservedWords = [ "module"
+                    , "signature"
+                    , "type"
+                    , "record"
+                    , "let"
+                    , "if"
+                    , "then"
+                    , "else"
+                    ]
 
 ident :: Parser Ident
 ident = do

@@ -579,3 +579,21 @@ spec = do
             whenParsesToAnnotation result $
                 it "has the expected type" $
                     annType result `shouldBe` "Int"
+
+    describe "if then else" $ do
+
+        let whenParsesToIfThenElse result assertions = do
+                it "parses to an if-then-else expression" $
+                    result `shouldSatisfy` is (_Right._EIf)
+                when (is _Right result) assertions
+
+            exprs :: Either Doc Expr -> [Text]
+            exprs =
+                view (_Right.to children)
+                & (fmap.fmap) (view (_EVar.identifier.text))
+
+        context "simple expressions " $ do
+            let result = parseExpr "if foo then bar else baz"
+            whenParsesToIfThenElse result $
+                it "has the expected values" $
+                    exprs result `shouldBe` ["foo", "bar", "baz"]
