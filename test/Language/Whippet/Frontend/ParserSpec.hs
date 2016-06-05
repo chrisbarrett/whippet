@@ -73,7 +73,15 @@ typeToText (TyStructural fs) =
 typeToText (TyFun a b) =
     "(" <> typeToText a <> " -> " <> typeToText b <> ")"
 
+emptySpan :: Trifecta.Span
 emptySpan = Trifecta.Span mempty mempty mempty
+
+nominalType :: Text -> Type
+nominalType = TyNominal . Ident emptySpan
+
+intLiteral :: Integer -> Expr
+intLiteral = ELit . LitInt
+
 
 spec :: Spec
 spec = do
@@ -635,7 +643,10 @@ spec = do
                 & (fmap.fmap) (view (_Pat._1))
 
             patVar :: Text -> Discriminator
-            patVar = DVar . Ident emptySpan
+            patVar x = DVar (Ident emptySpan x) Nothing
+
+            patVarTyped :: Text -> Type -> Discriminator
+            patVarTyped x = DVar (Ident emptySpan x) . Just
 
             bodyForms :: Either Doc Expr -> [Expr]
             bodyForms =
@@ -648,4 +659,12 @@ spec = do
                 it "has the expected binder" $
                     discriminators result `shouldBe` [patVar "x"]
                 it "has the expected body" $
-                    bodyForms result `shouldBe` [ELit (LitInt 0)]
+                    bodyForms result `shouldBe` [intLiteral 0]
+
+        context "type annotation" $ do
+            let result = parseExpr "x: Int -> 0"
+            whenParsesToLambda result $ do
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [patVarTyped "x" (nominalType "Int")]
+                it "has the expected body" $
+                    bodyForms result `shouldBe` [intLiteral 0]

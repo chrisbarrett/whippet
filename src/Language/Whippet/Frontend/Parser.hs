@@ -96,21 +96,22 @@ typeRef :: Parser Type
 typeRef =
     buildExpressionParser operators tyTerm
   where
-    tyTerm =
-        parens typeRef <|> nominalType <|> structuralType
-
-    structuralType =
-        TyStructural <$> recordFields
-        <?> "structural type"
-
-    nominalType = do
-        id <- ident <?> "type name"
-        pure (TyNominal id)
-
     operators = [ [Infix (pure TyApp) AssocLeft]
                 , [Infix (rarrow *> pure TyFun) AssocRight]
                 ]
 
+    tyTerm =
+        parens typeRef <|> nominalType <|> structuralType
+
+structuralType :: Parser Type
+structuralType =
+    TyStructural <$> recordFields
+    <?> "structural type"
+
+nominalType :: Parser Type
+nominalType = do
+    id <- ident <?> "type name"
+    pure (TyNominal id)
 
 recordFields :: Parser [Field]
 recordFields = braces (optional comma *> field `sepBy1` comma)
@@ -130,12 +131,14 @@ typeParameter = TypeParameter <$> ident <?> "type parameter"
 expr :: Parser Expr
 expr = do
     e <- term
-    t <- optional tyAnn
+    t <- optional typeAnnotation
     case t of
       Just t -> pure (EAnnotation e t)
       Nothing -> pure e
   where
-    tyAnn = (colon <?> "type annotation") *> typeRef
+    typeAnnotation = do
+        colon <?> "type annotation"
+        choice [nominalType, structuralType, parens typeRef]
 
     term =  variableOrLambda
         <|> ifThenElse
@@ -147,9 +150,10 @@ expr = do
 
     variableOrLambda = do
         v <- ident
+        ty <- optional typeAnnotation
         e <- optional (rarrow *> expr)
         case e of
-          Just t -> pure (ELam [Pat (DVar v) t])
+          Just tm -> pure (ELam [Pat (DVar v ty) tm])
           Nothing -> pure (EVar v)
 
 ifThenElse :: Parser Expr
