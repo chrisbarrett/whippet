@@ -57,7 +57,10 @@ data Ident = Ident {
       _identPos   :: Trifecta.Span
     , _identLabel :: Text
     }
-    deriving (Ord, Show, Data)
+    deriving (Ord, Data)
+
+instance Show Ident where
+    show = show . _identLabel
 
 instance Eq Ident where
   x == y = _identLabel x == _identLabel y
