@@ -703,3 +703,9 @@ spec = do
                     discriminators result `shouldBe` [patVarTyped "x" (nominalType "Int")]
                 it "has the expected body" $
                     bodyForms result `shouldBe` [int 0]
+
+        context "optional leading pipe" $ do
+            let result = parseExpr "fn { | x -> 0 }"
+            whenParsesToLambda result $
+                it "parses a single case" $ do
+                    length (bodyForms result) `shouldBe` 1

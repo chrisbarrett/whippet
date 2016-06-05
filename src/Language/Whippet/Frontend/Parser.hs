@@ -206,7 +206,7 @@ fn =
   where
     parser = do
         reserved "fn"
-        EFn <$> braces (pat `sepBy1` pipe)
+        EFn <$> braces (optional pipe *> pat `sepBy1` pipe)
 
 discriminator :: Parser Discriminator
 discriminator =
