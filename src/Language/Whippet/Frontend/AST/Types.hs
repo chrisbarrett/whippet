@@ -53,7 +53,10 @@ data Ident = Ident {
       _identPos   :: Trifecta.Span
     , _identLabel :: Text
     }
-    deriving (Eq, Ord, Show, Data)
+    deriving (Ord, Show, Data)
+
+instance Eq Ident where
+  x == y = _identLabel x == _identLabel y
 
 data Field = Field {
       _fieldIdent :: Ident
