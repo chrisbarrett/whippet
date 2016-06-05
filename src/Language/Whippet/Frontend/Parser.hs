@@ -130,37 +130,66 @@ typeParameter = TypeParameter <$> ident <?> "type parameter"
 
 expr :: Parser Expr
 expr = do
-    e <- term
+    e <- term <?> "expression"
     t <- optional typeAnnotation
     case t of
       Just t -> pure (EAnnotation e t)
       Nothing -> pure e
   where
-    typeAnnotation = do
-        colon <?> "type annotation"
-        choice [nominalType, structuralType, parens typeRef]
-
     term =  variableOrLambda
+        <|> lambda
         <|> ifThenElse
+        <|> fn
         <|> hole
         <|> numberLiteral
         <|> stringLiteral
         <|> listLiteral
         <|> recordLiteral
 
+    -- Try to parse lambda with a named binder first to improve error reporting.
     variableOrLambda = do
-        v <- ident
-        ty <- optional typeAnnotation
-        e <- optional (rarrow *> expr)
-        case e of
-          Just tm -> pure (ELam [Pat (DVar v ty) tm])
-          Nothing -> pure (EVar v)
+        name <- ident
+        next <- optional $ do
+                  ty <- optional typeAnnotation
+                  body <- rarrow *> expr
+                  pure (ty, body)
+        case next of
+          Just (ty, body) -> pure (ELam (Pat (DVar name ty) body))
+          Nothing -> pure (EVar name)
+
+
+lambda :: Parser Expr
+lambda =
+    ELam <$> pat
+    <?> "lambda expression"
+
+typeAnnotation :: Parser Type
+typeAnnotation = do
+    colon <?> "type annotation"
+    choice [nominalType, structuralType, parens typeRef]
 
 ifThenElse :: Parser Expr
 ifThenElse =
     EIf <$> (reserved "if" *> expr)
         <*> (reserved "then" *> expr)
         <*> (reserved "else" *> expr)
+
+fn :: Parser Expr
+fn = do
+    reserved "fn"
+    EFn <$> braces (pat `sepBy1` pipe)
+
+discriminator :: Parser Discriminator
+discriminator = do
+    v <- ident
+    ty <- optional typeAnnotation
+    pure (DVar v ty)
+
+pat :: Parser Pat
+pat = do
+    d <- discriminator
+    e <- rarrow *> expr
+    pure (Pat d e)
 
 hole :: Parser Expr
 hole = do
@@ -228,6 +257,7 @@ style = emptyIdents
                     , "if"
                     , "then"
                     , "else"
+                    , "fn"
                     ]
 
 ident :: Parser Ident

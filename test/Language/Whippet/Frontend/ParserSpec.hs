@@ -618,6 +618,10 @@ spec = do
                 it "has the expected type" $
                     annType result `shouldBe` Just (nominalType "Int")
 
+        context "nested type annotations" $ do
+            let result = parseExpr "1 : Int : Int"
+            it "should be rejected" $ do
+                result `shouldSatisfy` is _Left
 
     describe "if then else" $ do
 
@@ -636,37 +640,64 @@ spec = do
                     subexpressions result `shouldBe` [var "foo", var "bar", var "baz"]
 
 
-    describe "lambda" $ do
+    let patVar :: Text -> Discriminator
+        patVar x = DVar (Ident emptySpan x) Nothing
+
+        patVarTyped :: Text -> Type -> Discriminator
+        patVarTyped x = DVar (Ident emptySpan x) . Just
+
+    describe "bare lambda" $ do
 
         let whenParsesToLambda result assertions = do
                 it "parses to a lambda expression" $
                     result `shouldSatisfy` is (_Right._ELam)
                 when (is _Right result) assertions
 
-            discriminators :: Either Doc Expr -> [Discriminator]
-            discriminators expr =
-                expr ^.. _Right._ELam.traverse._Pat._1
+            discriminator :: Either Doc Expr -> [Discriminator]
+            discriminator expr =
+                expr ^. _Right._ELam.patDiscriminator.to singleton
 
-            bodyForms :: Either Doc Expr -> [Expr]
-            bodyForms expr =
-                expr ^.. _Right._ELam.traverse._Pat._2
+            body :: Either Doc Expr -> [Expr]
+            body expr =
+                expr ^. _Right._ELam.patBody.to singleton
 
-            patVar :: Text -> Discriminator
-            patVar x = DVar (Ident emptySpan x) Nothing
+            singleton :: a -> [a]
+            singleton = pure
 
-            patVarTyped :: Text -> Type -> Discriminator
-            patVarTyped x = DVar (Ident emptySpan x) . Just
-
-        context "single case" $ do
+        context "named binding" $ do
             let result = parseExpr "x -> 0"
             whenParsesToLambda result $ do
                 it "has the expected binder" $
-                    discriminators result `shouldBe` [patVar "x"]
+                    discriminator result `shouldBe` [patVar "x"]
                 it "has the expected body" $
-                    bodyForms result `shouldBe` [int 0]
+                    body result `shouldBe` [int 0]
 
-        context "type annotation" $ do
+        context "named binding with type annotation" $ do
             let result = parseExpr "x: Int -> 0"
+            whenParsesToLambda result $ do
+                it "has the expected binder" $
+                    discriminator result `shouldBe` [patVarTyped "x" (nominalType "Int")]
+                it "has the expected body" $
+                    body result `shouldBe` [int 0]
+
+
+    describe "pattern matching lambda" $ do
+
+        let whenParsesToLambda result assertions = do
+                it "parses to a lambda expression" $
+                    result `shouldSatisfy` is (_Right._EFn)
+                when (is _Right result) assertions
+
+            discriminators :: Either Doc Expr -> [Discriminator]
+            discriminators expr =
+                expr ^.. _Right._EFn.traverse.patDiscriminator
+
+            bodyForms :: Either Doc Expr -> [Expr]
+            bodyForms expr =
+                expr ^.. _Right._EFn.traverse.patBody
+
+        context "single case" $ do
+            let result = parseExpr "fn { x: Int -> 0 }"
             whenParsesToLambda result $ do
                 it "has the expected binder" $
                     discriminators result `shouldBe` [patVarTyped "x" (nominalType "Int")]

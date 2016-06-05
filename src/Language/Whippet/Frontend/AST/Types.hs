@@ -22,7 +22,10 @@ type Var = Ident
 data Discriminator = DVar Var (Maybe Type)
     deriving (Eq, Ord, Show, Data)
 
-data Pat = Pat Discriminator Expr
+data Pat = Pat {
+      _patDiscriminator :: Discriminator
+    , _patBody          :: Expr
+    }
     deriving (Eq, Ord, Show, Data)
 
 data Lit
@@ -38,7 +41,8 @@ data Expr
     | EApp Expr Expr
     | EHole Ident
     | EIf Expr Expr Expr
-    | ELam [Pat]
+    | ELam Pat
+    | EFn [Pat]
     | ELet Pat (Maybe Type) Expr
     | ELit Lit
     | EMatch Expr [Pat]
