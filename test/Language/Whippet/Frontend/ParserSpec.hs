@@ -754,7 +754,7 @@ spec = do
 
         context "'as' pattern" $ do
             let result = parseExpr "fn { u as Unit -> u }"
-            whenParsesToLambda result $ do
+            whenParsesToLambda result $
                 it "has the expected binder" $
                     discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
 
@@ -768,6 +768,6 @@ spec = do
 
         context "structural type match, leading comma" $ do
             let result = parseExpr "fn { {,fst} -> fst }"
-            whenParsesToLambda result $ do
+            whenParsesToLambda result $
                 it "parses successfully" $
                     discriminators result `shouldBe` [dRec [dVar "fst"]]
