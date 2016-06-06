@@ -620,7 +620,7 @@ spec = do
 
         context "nested type annotations" $ do
             let result = parseExpr "1 : Int : Int"
-            it "should be rejected" $ do
+            it "should be rejected" $
                 result `shouldSatisfy` is _Left
 
     describe "if then else" $ do
@@ -710,7 +710,7 @@ spec = do
         context "optional leading pipe" $ do
             let result = parseExpr "fn { | x -> 0 }"
             whenParsesToLambda result $
-                it "parses a single case" $ do
+                it "parses a single case" $
                     length (bodyForms result) `shouldBe` 1
 
         context "matching single nullary constructor" $ do
