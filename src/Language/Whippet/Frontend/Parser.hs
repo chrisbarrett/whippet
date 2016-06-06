@@ -29,6 +29,9 @@ parseString =
 ast :: Parser AST
 ast = whiteSpace *> (astModule <|> astSignature <|> astDecl)
 
+
+-- * Declarations
+
 astSignature :: Parser AST
 astSignature =
     parser <?> "signature"
@@ -107,6 +110,8 @@ decRecord =
         pure (DecRecordType i ts fs)
 
 
+-- * Types
+
 typeRef :: Parser Type
 typeRef =
     buildExpressionParser operators tyTerm
@@ -145,14 +150,17 @@ typeParameter =
   where
     parser = TypeParameter <$> ident
 
--- * Expression
+
+-- * Expressions
 
 expr :: Parser Expr
 expr = do
-    e <- term <?> "expression"
+    e <- buildExpressionParser operators term <?> "expression"
     t <- optional typeAnnotation
     pure (maybe e (EAnnotation e) t)
+
   where
+    operators = [[Infix (pure EApp) AssocLeft]]
     term =  fn
         <|> ifThenElse
         <|> stringLiteral
@@ -203,46 +211,6 @@ fn =
     bare = do
         p <- try pat
         pure [p]
-
-patterns :: Parser [Pat]
-patterns = braces (optional pipe *> pat `sepBy1` pipe)
-
-discriminator :: Parser Discriminator
-discriminator = do
-    e <- buildExpressionParser operators discTerm <?> "discriminator"
-    t <- optional typeAnnotation
-    pure (maybe e (DAnn e) t)
-  where
-    discTerm = parens discriminator <|> dctor <|> dvar <|> drecord <|> dwildcard
-
-    dctor =
-        DCtor <$> ctorName
-              <?> "constructor"
-
-    dvar =
-        DVar <$> ident
-             <?> "pattern variable"
-
-    drecord =
-        DRec <$> braces (optional comma *> discriminator `sepBy` comma)
-             <?> "record discriminator"
-
-    dwildcard = do
-        let wildcardStyle = identStyle & styleStart .~ (letter <|> char '_')
-        (s :~ span) <- spanned (Trifecta.ident wildcardStyle) <?> "wildcard"
-        pure (DWildcard (Ident span s))
-
-    operators :: OperatorTable Parser Discriminator
-    operators = [ [Infix (reserved "as" *> pure DAs) AssocLeft]
-                , [Infix (pure DApp) AssocLeft]
-                ]
-
-
-pat :: Parser Pat
-pat = do
-    d <- discriminator
-    e <- rarrow *> expr
-    pure (Pat d e)
 
 hole :: Parser Expr
 hole =
@@ -302,6 +270,48 @@ recordLiteral =
         colon
         e <- expr
         pure (f, e)
+
+
+-- * Pattern matching
+
+patterns :: Parser [Pat]
+patterns = braces (optional pipe *> pat `sepBy1` pipe)
+
+pat :: Parser Pat
+pat = do
+    d <- discriminator
+    e <- rarrow *> expr
+    pure (Pat d e)
+
+discriminator :: Parser Discriminator
+discriminator = do
+    e <- buildExpressionParser operators discTerm <?> "discriminator"
+    t <- optional typeAnnotation
+    pure (maybe e (DAnn e) t)
+  where
+    discTerm = parens discriminator <|> dctor <|> dvar <|> drecord <|> dwildcard
+
+    dctor =
+        DCtor <$> ctorName
+              <?> "constructor"
+
+    dvar =
+        DVar <$> ident
+             <?> "pattern variable"
+
+    drecord =
+        DRec <$> braces (optional comma *> discriminator `sepBy` comma)
+             <?> "record discriminator"
+
+    dwildcard = do
+        let wildcardStyle = identStyle & styleStart .~ (letter <|> char '_')
+        (s :~ span) <- spanned (Trifecta.ident wildcardStyle) <?> "wildcard"
+        pure (DWildcard (Ident span s))
+
+    operators :: OperatorTable Parser Discriminator
+    operators = [ [Infix (reserved "as" *> pure DAs) AssocLeft]
+                , [Infix (pure DApp) AssocLeft]
+                ]
 
 
 -- * Helpers
