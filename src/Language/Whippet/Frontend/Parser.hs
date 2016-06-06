@@ -209,15 +209,28 @@ patterns = braces (optional pipe *> pat `sepBy1` pipe)
 
 discriminator :: Parser Discriminator
 discriminator = do
-    e <- buildExpressionParser operators discTerm <?> "pattern discriminator"
+    e <- buildExpressionParser operators discTerm <?> "discriminator"
     t <- optional typeAnnotation
     pure (maybe e (DAnn e) t)
   where
-    discTerm = parens discriminator <|> dctor <|> dvar <|> drecord
+    discTerm = parens discriminator <|> dctor <|> dvar <|> drecord <|> dwildcard
 
-    dctor = DCtor <$> ctorName
-    dvar = DVar <$> ident
-    drecord = DRec <$> braces (optional comma *> discriminator `sepBy` comma)
+    dctor =
+        DCtor <$> ctorName
+              <?> "constructor"
+
+    dvar =
+        DVar <$> ident
+             <?> "pattern variable"
+
+    drecord =
+        DRec <$> braces (optional comma *> discriminator `sepBy` comma)
+             <?> "record discriminator"
+
+    dwildcard = do
+        let wildcardStyle = identStyle & styleStart .~ (letter <|> char '_')
+        (s :~ span) <- spanned (Trifecta.ident wildcardStyle) <?> "wildcard"
+        pure (DWildcard (Ident span s))
 
     operators :: OperatorTable Parser Discriminator
     operators = [ [Infix (reserved "as" *> pure DAs) AssocLeft]
@@ -328,9 +341,12 @@ reserved s = reserve identStyle s <?> s
 
 pipe :: Parser ()
 pipe = reserved "|"
+    <?> "pipe"
 
 equals :: Parser ()
 equals = reserved "="
+    <?> "equals"
 
 rarrow :: Parser ()
 rarrow = reserved "->"
+    <?> "right arrow"

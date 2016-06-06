@@ -19,6 +19,7 @@ data AST
 
 data Discriminator
     = DVar Ident
+    | DWildcard Ident
     | DCtor Ident
     | DAnn Discriminator Type
     | DRec [Discriminator]

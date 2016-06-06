@@ -802,6 +802,9 @@ spec = do
             bodyForms expr =
                 expr ^.. _Right._EMatch._2.traverse.patBody
 
+            dWildcard :: Text -> Discriminator
+            dWildcard = DWildcard . ident
+
             whenParsesToMatch result assertions = do
                 it "parses to a match expression" $
                     result `shouldSatisfy` is (_Right._EMatch)
@@ -850,3 +853,15 @@ spec = do
                     scrutinee result `shouldBe` [var "p"]
                 it "has the expected binder" $
                     discriminators result `shouldBe` [dRec [dVar "fst"]]
+
+        context "simple wildcard" $ do
+            let result = parseExpr "match x { _ -> 1 }"
+            whenParsesToMatch result $
+                it "has a wildcard binder" $
+                    discriminators result `shouldBe` [dWildcard "_"]
+
+        context "named wildcard" $ do
+            let result = parseExpr "match x { _foo -> 1 }"
+            whenParsesToMatch result $
+                it "has a wildcard binder" $
+                    discriminators result `shouldBe` [dWildcard "_foo"]
