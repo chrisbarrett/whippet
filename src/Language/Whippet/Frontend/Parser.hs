@@ -151,37 +151,18 @@ expr :: Parser Expr
 expr = do
     e <- term <?> "expression"
     t <- optional typeAnnotation
-    case t of
-      Just t -> pure (EAnnotation e t)
-      Nothing -> pure e
+    pure (maybe e (EAnnotation e) t)
   where
-    term =  variableOrLambda
-        <|> lambda
+    term =  fn
+        <|> variable
         <|> ifThenElse
-        <|> fn
         <|> hole
         <|> numberLiteral
         <|> stringLiteral
         <|> listLiteral
         <|> recordLiteral
 
-    -- Try to parse lambda with a named binder first to improve error reporting.
-    variableOrLambda = do
-        name <- ident
-        next <- optional $ do
-                  ty <- optional typeAnnotation
-                  body <- rarrow *> expr
-                  pure (ty, body)
-        case next of
-          Just (ty, body) -> pure (ELam (Pat (DVar name ty) body))
-          Nothing -> pure (EVar name)
-
-
-lambda :: Parser Expr
-lambda =
-    parser <?> "lambda expression"
-  where
-    parser = ELam <$> pat
+    variable = EVar <$> ident
 
 typeAnnotation :: Parser Type
 typeAnnotation =
@@ -206,21 +187,31 @@ fn =
   where
     parser = do
         reserved "fn"
-        EFn <$> braces (optional pipe *> pat `sepBy1` pipe)
+        EFn <$> choice [nested, bare]
+
+    nested = braces (optional pipe *> pat `sepBy1` pipe)
+
+    bare = do
+        p <- pat
+        pure [p]
 
 discriminator :: Parser Discriminator
-discriminator =
-    buildExpressionParser operators discTerm <?> "pattern discriminator"
+discriminator = do
+    e <- buildExpressionParser operators discTerm <?> "pattern discriminator"
+    t <- optional typeAnnotation
+    pure (maybe e (DAnn e) t)
   where
+    discTerm = parens discriminator <|> dctor <|> dvar <|> drecord
+
+    dctor = DCtor <$> ctorName
+    dvar = DVar <$> ident
+    drecord = DRec <$> braces (optional comma *> discriminator `sepBy` comma)
+
     operators :: OperatorTable Parser Discriminator
     operators = [ [Infix (reserved "as" *> pure DAs) AssocLeft]
                 , [Infix (pure DApp) AssocLeft]
                 ]
 
-    discTerm = parens discriminator <|> dctor <|> dvar
-
-    dctor = DCtor <$> ctorName
-    dvar  = DVar <$> ident <*> optional typeAnnotation
 
 pat :: Parser Pat
 pat = do

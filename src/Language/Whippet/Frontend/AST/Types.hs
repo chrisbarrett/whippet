@@ -17,11 +17,11 @@ data AST
     | AstDecl      Decl
     deriving (Eq, Ord, Show)
 
-type Var = Ident
-
 data Discriminator
-    = DVar Var (Maybe Type)
+    = DVar Ident
     | DCtor Ident
+    | DAnn Discriminator Type
+    | DRec [Discriminator]
     | DAs Discriminator Discriminator
     | DApp Discriminator Discriminator
     deriving (Eq, Ord, Show, Data)
@@ -45,13 +45,12 @@ data Expr
     | EApp Expr Expr
     | EHole Ident
     | EIf Expr Expr Expr
-    | ELam Pat
     | EFn [Pat]
     | ELet Pat (Maybe Type) Expr
     | ELit Lit
     | EMatch Expr [Pat]
     | EParen Expr
-    | EVar Var
+    | EVar Ident
     deriving (Eq, Ord, Show, Data)
 
 instance Plated Expr where
