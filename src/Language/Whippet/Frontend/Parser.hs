@@ -154,15 +154,26 @@ expr = do
     pure (maybe e (EAnnotation e) t)
   where
     term =  fn
-        <|> variable
         <|> ifThenElse
-        <|> hole
-        <|> numberLiteral
         <|> stringLiteral
         <|> listLiteral
         <|> recordLiteral
+        <|> match
+        <|> variable
+        <|> hole
+        <|> numberLiteral
 
     variable = EVar <$> ident
+
+match :: Parser Expr
+match =
+    parser <?> "match expression"
+  where
+    parser = do
+        reserved "match"
+        e <- expr
+        ps <- patterns
+        pure (EMatch e ps)
 
 typeAnnotation :: Parser Type
 typeAnnotation =
@@ -187,13 +198,14 @@ fn =
   where
     parser = do
         reserved "fn"
-        EFn <$> choice [bare, nested]
-
-    nested = braces (optional pipe *> pat `sepBy1` pipe)
+        EFn <$> choice [bare, patterns]
 
     bare = do
         p <- try pat
         pure [p]
+
+patterns :: Parser [Pat]
+patterns = braces (optional pipe *> pat `sepBy1` pipe)
 
 discriminator :: Parser Discriminator
 discriminator = do
@@ -291,6 +303,7 @@ reservedWords = [ "module"
                 , "else"
                 , "fn"
                 , "as"
+                , "match"
                 ]
 
 ctorName :: Parser Ident

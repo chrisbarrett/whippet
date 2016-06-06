@@ -658,130 +658,195 @@ spec = do
         patAs :: Discriminator -> Discriminator -> Discriminator
         patAs = DAs
 
-        discriminators :: Either Doc Expr -> [Discriminator]
-        discriminators expr =
-            expr ^.. _Right._EFn.traverse.patDiscriminator
+    describe "lambda" $ do
 
-        bodyForms :: Either Doc Expr -> [Expr]
-        bodyForms expr =
-            expr ^.. _Right._EFn.traverse.patBody
-
-    describe "bare lambda" $ do
-
-        let whenParsesToLambda result assertions = do
-                it "parses to a lambda expression" $
-                    result `shouldSatisfy` is (_Right._EFn)
-                when (is _Right result) assertions
-
-            discriminator :: Either Doc Expr -> [Discriminator]
-            discriminator expr =
+        let discriminators :: Either Doc Expr -> [Discriminator]
+            discriminators expr =
                 expr ^.. _Right._EFn.traverse.patDiscriminator
 
-            body :: Either Doc Expr -> [Expr]
-            body expr =
+            bodyForms :: Either Doc Expr -> [Expr]
+            bodyForms expr =
                 expr ^.. _Right._EFn.traverse.patBody
 
-        context "named binding" $ do
-            let result = parseExpr "fn x -> 0"
-            whenParsesToLambda result $ do
-                it "has the expected binder" $
-                    discriminator result `shouldBe` [dVar "x"]
-                it "has the expected body" $
-                    body result `shouldBe` [int 0]
+        describe "bare lambda" $ do
 
-        context "named binding with type annotation" $ do
-            let result = parseExpr "fn x: Int -> 0"
-            whenParsesToLambda result $ do
-                it "has the expected binder" $
-                    discriminator result `shouldBe` [dVar "x" `dAnn` nominalType "Int"]
-                it "has the expected body" $
-                    body result `shouldBe` [int 0]
+            let whenParsesToLambda result assertions = do
+                    it "parses to a lambda expression" $
+                        result `shouldSatisfy` is (_Right._EFn)
+                    when (is _Right result) assertions
 
-        context "'as' pattern" $ do
-            let result = parseExpr "fn u as Unit -> 1"
-            whenParsesToLambda result $
-                it "has the expected binder" $
-                    discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
+                discriminator :: Either Doc Expr -> [Discriminator]
+                discriminator expr =
+                    expr ^.. _Right._EFn.traverse.patDiscriminator
 
-        context "structural type" $ do
-            let result = parseExpr "fn {fst, snd} -> fst "
-            whenParsesToLambda result $ do
-                it "has the expected binder" $
-                    discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
-                it "has the expected body" $
-                    bodyForms result `shouldBe` [var "fst"]
+                body :: Either Doc Expr -> [Expr]
+                body expr =
+                    expr ^.. _Right._EFn.traverse.patBody
+
+            context "named binding" $ do
+                let result = parseExpr "fn x -> 0"
+                whenParsesToLambda result $ do
+                    it "has the expected binder" $
+                        discriminator result `shouldBe` [dVar "x"]
+                    it "has the expected body" $
+                        body result `shouldBe` [int 0]
+
+            context "named binding with type annotation" $ do
+                let result = parseExpr "fn x: Int -> 0"
+                whenParsesToLambda result $ do
+                    it "has the expected binder" $
+                        discriminator result `shouldBe` [dVar "x" `dAnn` nominalType "Int"]
+                    it "has the expected body" $
+                        body result `shouldBe` [int 0]
+
+            context "'as' pattern" $ do
+                let result = parseExpr "fn u as Unit -> 1"
+                whenParsesToLambda result $
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
+
+            context "structural type" $ do
+                let result = parseExpr "fn {fst, snd} -> fst "
+                whenParsesToLambda result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
+                    it "has the expected body" $
+                        bodyForms result `shouldBe` [var "fst"]
 
 
-    describe "pattern matching lambda" $ do
+        describe "branching lambda" $ do
 
-        let whenParsesToLambda result assertions = do
-                it "parses to a lambda expression" $
-                    result `shouldSatisfy` is (_Right._EFn)
+            let whenParsesToLambda result assertions = do
+                    it "parses to a lambda expression" $
+                        result `shouldSatisfy` is (_Right._EFn)
+                    when (is _Right result) assertions
+
+            context "single case" $ do
+                let result = parseExpr "fn { x: Int -> 0 }"
+                whenParsesToLambda result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dVar "x" `dAnn` nominalType "Int"]
+                    it "has the expected body" $
+                        bodyForms result `shouldBe` [int 0]
+
+            context "optional leading pipe" $ do
+                let result = parseExpr "fn { | x -> 0 }"
+                whenParsesToLambda result $
+                    it "parses a single case" $
+                        length (bodyForms result) `shouldBe` 1
+
+            context "matching single nullary constructor" $ do
+                let result = parseExpr "fn { Unit -> 0 }"
+                whenParsesToLambda result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dCtor "Unit"]
+                    it "has the expected body" $
+                        bodyForms result `shouldBe` [int 0]
+
+            context "matching multiple nullary constructors" $ do
+                let result = parseExpr "fn { True -> 0 | False -> 1 }"
+                whenParsesToLambda result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dCtor "True", dCtor "False"]
+                    it "has the expected body" $
+                        bodyForms result `shouldBe` [int 0, int 1]
+
+            context "matching constructors with parameters" $ do
+                let result = parseExpr "fn { None -> 0 | Some x -> 1 }"
+                whenParsesToLambda result $
+                    it "has the expected binders" $
+                        discriminators result `shouldBe` [ dCtor "None"
+                                                        , dApp [dCtor "Some", dVar "x"]
+                                                        ]
+
+            context "matching constructor with multiple parameters" $ do
+                let result = parseExpr "fn { Pair x y  -> 1 }"
+                whenParsesToLambda result $
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dApp [ dCtor "Pair"
+                                                              , dVar "x"
+                                                              , dVar "y"
+                                                              ]]
+
+            context "'as' pattern" $ do
+                let result = parseExpr "fn { u as Unit -> u }"
+                whenParsesToLambda result $
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
+
+            context "matching record type" $ do
+                let result = parseExpr "fn { {fst, snd} -> fst }"
+                whenParsesToLambda result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
+                    it "has the expected body" $
+                        bodyForms result `shouldBe` [var "fst"]
+
+            context "matching record type, leading comma" $ do
+                let result = parseExpr "fn { {,fst} -> fst }"
+                whenParsesToLambda result $
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dRec [dVar "fst"]]
+
+    describe "match expression" $ do
+
+        let scrutinee :: Either Doc Expr -> [Expr]
+            scrutinee expr =
+                expr ^.. _Right._EMatch._1
+
+            discriminators :: Either Doc Expr -> [Discriminator]
+            discriminators expr =
+                expr ^.. _Right._EMatch._2.traverse.patDiscriminator
+
+            bodyForms :: Either Doc Expr -> [Expr]
+            bodyForms expr =
+                expr ^.. _Right._EMatch._2.traverse.patBody
+
+            whenParsesToMatch result assertions = do
+                it "parses to a match expression" $
+                    result `shouldSatisfy` is (_Right._EMatch)
                 when (is _Right result) assertions
 
         context "single case" $ do
-            let result = parseExpr "fn { x: Int -> 0 }"
-            whenParsesToLambda result $ do
+            let result = parseExpr "match x { y -> 0 }"
+            whenParsesToMatch result $ do
+                it "has the expected scrutinee" $
+                    scrutinee result `shouldBe` [var "x"]
                 it "has the expected binder" $
-                    discriminators result `shouldBe` [dVar "x" `dAnn` nominalType "Int"]
-                it "has the expected body" $
-                    bodyForms result `shouldBe` [int 0]
-
-        context "optional leading pipe" $ do
-            let result = parseExpr "fn { | x -> 0 }"
-            whenParsesToLambda result $
-                it "parses a single case" $
-                    length (bodyForms result) `shouldBe` 1
-
-        context "matching single nullary constructor" $ do
-            let result = parseExpr "fn { Unit -> 0 }"
-            whenParsesToLambda result $ do
-                it "has the expected binder" $
-                    discriminators result `shouldBe` [dCtor "Unit"]
+                    discriminators result `shouldBe` [dVar "y"]
                 it "has the expected body" $
                     bodyForms result `shouldBe` [int 0]
 
         context "matching multiple nullary constructors" $ do
-            let result = parseExpr "fn { True -> 0 | False -> 1 }"
-            whenParsesToLambda result $ do
+            let result = parseExpr "match b { True -> 0 | False -> 1 }"
+            whenParsesToMatch result $ do
+                it "has the expected scrutinee" $
+                    scrutinee result `shouldBe` [var "b"]
                 it "has the expected binder" $
                     discriminators result `shouldBe` [dCtor "True", dCtor "False"]
                 it "has the expected body" $
                     bodyForms result `shouldBe` [int 0, int 1]
 
-        context "matching constructors with parameters" $ do
-            let result = parseExpr "fn { None -> 0 | Some x -> 1 }"
-            whenParsesToLambda result $
-                it "has the expected binders" $
-                    discriminators result `shouldBe` [ dCtor "None"
-                                                     , dApp [dCtor "Some", dVar "x"]
-                                                     ]
-
-        context "matching constructor with multiple parameters" $ do
-            let result = parseExpr "fn { Pair x y  -> 1 }"
-            whenParsesToLambda result $
-                it "has the expected binder" $
-                    discriminators result `shouldBe` [dApp [ dCtor "Pair"
-                                                           , dVar "x"
-                                                           , dVar "y"
-                                                           ]]
-
         context "'as' pattern" $ do
-            let result = parseExpr "fn { u as Unit -> u }"
-            whenParsesToLambda result $
+            let result = parseExpr "match x { u as Unit -> 1 }"
+            whenParsesToMatch result $
                 it "has the expected binder" $
                     discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
 
-        context "matching structural type" $ do
-            let result = parseExpr "fn { {fst, snd} -> fst }"
-            whenParsesToLambda result $ do
+        context "matching record type" $ do
+            let result = parseExpr "match t { {fst, snd} -> fst }"
+            whenParsesToMatch result $ do
+                it "has the expected scrutinee" $
+                    scrutinee result `shouldBe` [var "t"]
                 it "has the expected binder" $
                     discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
                 it "has the expected body" $
                     bodyForms result `shouldBe` [var "fst"]
 
-        context "structural type match, leading comma" $ do
-            let result = parseExpr "fn { {,fst} -> fst }"
-            whenParsesToLambda result $
+        context "matching record type, leading comma" $ do
+            let result = parseExpr "match p { {,fst} -> fst }"
+            whenParsesToMatch result $ do
+                it "has the expected scrutinee" $
+                    scrutinee result `shouldBe` [var "p"]
                 it "has the expected binder" $
                     discriminators result `shouldBe` [dRec [dVar "fst"]]
