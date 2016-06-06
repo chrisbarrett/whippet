@@ -697,6 +697,12 @@ spec = do
                 it "has the expected body" $
                     body result `shouldBe` [int 0]
 
+        context "'as' pattern" $ do
+            let result = parseExpr "fn u as Unit -> 1"
+            whenParsesToLambda result $
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
+
         context "structural type" $ do
             let result = parseExpr "fn {fst, snd} -> fst "
             whenParsesToLambda result $ do
