@@ -643,20 +643,8 @@ spec = do
     let dVar :: Text -> Discriminator
         dVar x = DVar (Ident emptySpan x)
 
-        dAnn :: Discriminator -> Type -> Discriminator
-        dAnn = DAnn
-
         dCtor :: Text -> Discriminator
         dCtor x = DCtor (Ident emptySpan x)
-
-        dApp :: [Discriminator] -> Discriminator
-        dApp = foldl1 DApp
-
-        dRec :: [Discriminator] -> Discriminator
-        dRec = DRec
-
-        patAs :: Discriminator -> Discriminator -> Discriminator
-        patAs = DAs
 
     describe "lambda" $ do
 
@@ -695,7 +683,7 @@ spec = do
                 let result = parseExpr "fn x: Int -> 0"
                 whenParsesToLambda result $ do
                     it "has the expected binder" $
-                        discriminator result `shouldBe` [dVar "x" `dAnn` nominalType "Int"]
+                        discriminator result `shouldBe` [dVar "x" `DAnn` nominalType "Int"]
                     it "has the expected body" $
                         body result `shouldBe` [int 0]
 
@@ -703,13 +691,13 @@ spec = do
                 let result = parseExpr "fn u as Unit -> 1"
                 whenParsesToLambda result $
                     it "has the expected binder" $
-                        discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
+                        discriminators result `shouldBe` [dVar "u" `DAs` dCtor "Unit"]
 
             context "structural type" $ do
                 let result = parseExpr "fn {fst, snd} -> fst "
                 whenParsesToLambda result $ do
                     it "has the expected binder" $
-                        discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
+                        discriminators result `shouldBe` [DRec [dVar "fst", dVar "snd"]]
                     it "has the expected body" $
                         bodyForms result `shouldBe` [var "fst"]
 
@@ -725,7 +713,7 @@ spec = do
                 let result = parseExpr "fn { x: Int -> 0 }"
                 whenParsesToLambda result $ do
                     it "has the expected binder" $
-                        discriminators result `shouldBe` [dVar "x" `dAnn` nominalType "Int"]
+                        discriminators result `shouldBe` [dVar "x" `DAnn` nominalType "Int"]
                     it "has the expected body" $
                         bodyForms result `shouldBe` [int 0]
 
@@ -756,29 +744,26 @@ spec = do
                 whenParsesToLambda result $
                     it "has the expected binders" $
                         discriminators result `shouldBe` [ dCtor "None"
-                                                        , dApp [dCtor "Some", dVar "x"]
-                                                        ]
+                                                         , dCtor "Some" `DApp` dVar "x"
+                                                         ]
 
             context "matching constructor with multiple parameters" $ do
                 let result = parseExpr "fn { Pair x y  -> 1 }"
                 whenParsesToLambda result $
                     it "has the expected binder" $
-                        discriminators result `shouldBe` [dApp [ dCtor "Pair"
-                                                              , dVar "x"
-                                                              , dVar "y"
-                                                              ]]
+                        discriminators result `shouldBe` [dCtor "Pair" `DApp` dVar "x" `DApp` dVar "y"]
 
             context "'as' pattern" $ do
                 let result = parseExpr "fn { u as Unit -> u }"
                 whenParsesToLambda result $
                     it "has the expected binder" $
-                        discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
+                        discriminators result `shouldBe` [dVar "u" `DAs` dCtor "Unit"]
 
             context "matching record type" $ do
                 let result = parseExpr "fn { {fst, snd} -> fst }"
                 whenParsesToLambda result $ do
                     it "has the expected binder" $
-                        discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
+                        discriminators result `shouldBe` [DRec [dVar "fst", dVar "snd"]]
                     it "has the expected body" $
                         bodyForms result `shouldBe` [var "fst"]
 
@@ -786,7 +771,7 @@ spec = do
                 let result = parseExpr "fn { {,fst} -> fst }"
                 whenParsesToLambda result $
                     it "has the expected binder" $
-                        discriminators result `shouldBe` [dRec [dVar "fst"]]
+                        discriminators result `shouldBe` [DRec [dVar "fst"]]
 
     describe "match expression" $ do
 
@@ -834,7 +819,7 @@ spec = do
             let result = parseExpr "match x { u as Unit -> 1 }"
             whenParsesToMatch result $
                 it "has the expected binder" $
-                    discriminators result `shouldBe` [dVar "u" `patAs` dCtor "Unit"]
+                    discriminators result `shouldBe` [dVar "u" `DAs` dCtor "Unit"]
 
         context "matching record type" $ do
             let result = parseExpr "match t { {fst, snd} -> fst }"
@@ -842,7 +827,7 @@ spec = do
                 it "has the expected scrutinee" $
                     scrutinee result `shouldBe` [var "t"]
                 it "has the expected binder" $
-                    discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
+                    discriminators result `shouldBe` [DRec [dVar "fst", dVar "snd"]]
                 it "has the expected body" $
                     bodyForms result `shouldBe` [var "fst"]
 
@@ -852,7 +837,7 @@ spec = do
                 it "has the expected scrutinee" $
                     scrutinee result `shouldBe` [var "p"]
                 it "has the expected binder" $
-                    discriminators result `shouldBe` [dRec [dVar "fst"]]
+                    discriminators result `shouldBe` [DRec [dVar "fst"]]
 
         context "simple wildcard" $ do
             let result = parseExpr "match x { _ -> 1 }"
