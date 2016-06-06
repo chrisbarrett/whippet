@@ -36,6 +36,7 @@ data Pat = Pat {
 data Lit
     = LitList [Expr]
     | LitInt Integer
+    | LitChar Char
     | LitScientific Scientific
     | LitRecord [(Ident, Expr)]
     | LitString Text

@@ -377,6 +377,8 @@ spec = do
                     fnType result `shouldBe` "(A -> {unpack: A})"
 
 
+    -- * Expressions
+
     let parseExpr :: BS.ByteString -> Either Doc Expr
         parseExpr =
             resultToEither . Trifecta.parseByteString (Parser.expr <* Trifecta.eof) mempty
@@ -525,6 +527,29 @@ spec = do
             whenParsesToString result $
                 it "has the expected content" $
                     stringContent result `shouldBe` "foo\nbar"
+
+
+    describe "character literal" $ do
+
+        let whenParsesToChar result assertions = do
+                it "parses to a char literal" $
+                    result `shouldSatisfy` is (_Right._ELit._LitChar)
+                when (is _Right result) assertions
+
+            char :: Either Doc Expr -> [Char]
+            char expr =
+                expr ^.. _Right._ELit._LitChar
+
+        context "no character" $ do
+            let result = parseExpr "''"
+            it "fails to parse" $
+                result `shouldSatisfy` is _Left
+
+        context "single character" $ do
+            let result = parseExpr "'a'"
+            whenParsesToChar result $
+                it "has the expected content" $
+                    char result `shouldBe` "a"
 
 
     describe "list literal" $ do

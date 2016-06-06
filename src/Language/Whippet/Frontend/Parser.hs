@@ -164,6 +164,7 @@ expr = do
     term =  fn
         <|> ifThenElse
         <|> stringLiteral
+        <|> char
         <|> listLiteral
         <|> recordLiteral
         <|> match
@@ -172,6 +173,7 @@ expr = do
         <|> numberLiteral
 
     variable = EVar <$> ident
+    char = ELit . LitChar <$> charLiteral
 
 match :: Parser Expr
 match =
