@@ -783,5 +783,5 @@ spec = do
         context "structural type match, leading comma" $ do
             let result = parseExpr "fn { {,fst} -> fst }"
             whenParsesToLambda result $
-                it "parses successfully" $
+                it "has the expected binder" $
                     discriminators result `shouldBe` [dRec [dVar "fst"]]
