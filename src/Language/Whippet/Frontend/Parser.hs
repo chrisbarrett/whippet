@@ -187,12 +187,12 @@ fn =
   where
     parser = do
         reserved "fn"
-        EFn <$> choice [nested, bare]
+        EFn <$> choice [bare, nested]
 
     nested = braces (optional pipe *> pat `sepBy1` pipe)
 
     bare = do
-        p <- pat
+        p <- try pat
         pure [p]
 
 discriminator :: Parser Discriminator

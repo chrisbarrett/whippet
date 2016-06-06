@@ -658,6 +658,14 @@ spec = do
         patAs :: Discriminator -> Discriminator -> Discriminator
         patAs = DAs
 
+        discriminators :: Either Doc Expr -> [Discriminator]
+        discriminators expr =
+            expr ^.. _Right._EFn.traverse.patDiscriminator
+
+        bodyForms :: Either Doc Expr -> [Expr]
+        bodyForms expr =
+            expr ^.. _Right._EFn.traverse.patBody
+
     describe "bare lambda" $ do
 
         let whenParsesToLambda result assertions = do
@@ -689,6 +697,14 @@ spec = do
                 it "has the expected body" $
                     body result `shouldBe` [int 0]
 
+        context "structural type" $ do
+            let result = parseExpr "fn {fst, snd} -> fst "
+            whenParsesToLambda result $ do
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [dRec [dVar "fst", dVar "snd"]]
+                it "has the expected body" $
+                    bodyForms result `shouldBe` [var "fst"]
+
 
     describe "pattern matching lambda" $ do
 
@@ -696,14 +712,6 @@ spec = do
                 it "parses to a lambda expression" $
                     result `shouldSatisfy` is (_Right._EFn)
                 when (is _Right result) assertions
-
-            discriminators :: Either Doc Expr -> [Discriminator]
-            discriminators expr =
-                expr ^.. _Right._EFn.traverse.patDiscriminator
-
-            bodyForms :: Either Doc Expr -> [Expr]
-            bodyForms expr =
-                expr ^.. _Right._EFn.traverse.patBody
 
         context "single case" $ do
             let result = parseExpr "fn { x: Int -> 0 }"
