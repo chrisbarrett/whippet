@@ -646,6 +646,9 @@ spec = do
         patVarTyped :: Text -> Type -> Discriminator
         patVarTyped x = DVar (Ident emptySpan x) . Just
 
+        patCtor :: Text -> Discriminator
+        patCtor x = DCtor (Ident emptySpan x)
+
     describe "bare lambda" $ do
 
         let whenParsesToLambda result assertions = do
@@ -709,3 +712,19 @@ spec = do
             whenParsesToLambda result $
                 it "parses a single case" $ do
                     length (bodyForms result) `shouldBe` 1
+
+        context "matching single nullary constructor" $ do
+            let result = parseExpr "fn { Unit -> 0 }"
+            whenParsesToLambda result $ do
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [patCtor "Unit"]
+                it "has the expected body" $
+                    bodyForms result `shouldBe` [int 0]
+
+        context "matching multiple nullary constructors" $ do
+            let result = parseExpr "fn { True -> 0 | False -> 1 }"
+            whenParsesToLambda result $ do
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [patCtor "True", patCtor "False"]
+                it "has the expected body" $
+                    bodyForms result `shouldBe` [int 0, int 1]

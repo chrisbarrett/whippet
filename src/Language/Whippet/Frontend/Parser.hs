@@ -72,7 +72,7 @@ constructor =
     parser <?> "constructor"
   where
     parser = do
-        i <- ident
+        i <- ctorName
         ts <- many typeRef
         pure (Ctor i ts)
         <?> "constructor"
@@ -210,12 +210,14 @@ fn =
 
 discriminator :: Parser Discriminator
 discriminator =
-    parser <?> "pattern discriminator"
+    buildExpressionParser operators discTerm <?> "pattern discriminator"
   where
-    parser = do
-        v <- ident
-        ty <- optional typeAnnotation
-        pure (DVar v ty)
+    operators = [[Infix (pure DApp) AssocLeft]]
+
+    discTerm = parens discriminator <|> dctor <|> dvar
+
+    dctor = DCtor <$> ctorName
+    dvar  = DVar <$> ident <*> optional typeAnnotation
 
 pat :: Parser Pat
 pat = do
@@ -228,7 +230,7 @@ hole =
     parser <?> "hole"
   where
     parser = do
-      let holeStyle = style & styleStart .~ (letter <|> char '_')
+      let holeStyle = identStyle & styleStart .~ (letter <|> char '_')
       (s :~ span) <- spanned (Trifecta.ident holeStyle)
       pure (EHole (Ident span s))
 
@@ -285,30 +287,36 @@ recordLiteral =
 
 -- * Helpers
 
-style :: Trifecta.IdentifierStyle Parser
-style = emptyIdents
-        & styleReserved .~ reservedWords
-        & styleStart    .~ letter
-        & styleLetter   .~ (alphaNum <|> oneOf "_?")
-  where
-    reservedWords = [ "module"
-                    , "signature"
-                    , "type"
-                    , "record"
-                    , "let"
-                    , "if"
-                    , "then"
-                    , "else"
-                    , "fn"
-                    ]
+reservedWords = [ "module"
+                , "signature"
+                , "type"
+                , "record"
+                , "let"
+                , "if"
+                , "then"
+                , "else"
+                , "fn"
+                ]
 
-ident :: Parser Ident
-ident = do
+ctorName :: Parser Ident
+ctorName = do
+    let style = identStyle & styleStart .~ upper
     (s :~ span) <- spanned (Trifecta.ident style)
     pure (Ident span s)
 
+ident :: Parser Ident
+ident = do
+    (s :~ span) <- spanned (Trifecta.ident identStyle)
+    pure (Ident span s)
+
+identStyle :: Trifecta.IdentifierStyle Parser
+identStyle = emptyIdents
+        & styleReserved .~ reservedWords
+        & styleStart    .~ letter
+        & styleLetter   .~ (alphaNum <|> oneOf "_?")
+
 reserved :: String -> Parser ()
-reserved s = reserve style s <?> s
+reserved s = reserve identStyle s <?> s
 
 pipe :: Parser ()
 pipe = reserved "|"
