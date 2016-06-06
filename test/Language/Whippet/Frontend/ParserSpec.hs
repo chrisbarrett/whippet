@@ -652,6 +652,9 @@ spec = do
         patApp :: [Discriminator] -> Discriminator
         patApp = foldl1 DApp
 
+        patAs :: Discriminator -> Discriminator -> Discriminator
+        patAs = DAs
+
     describe "bare lambda" $ do
 
         let whenParsesToLambda result assertions = do
@@ -748,3 +751,9 @@ spec = do
                                                              , patVar "x"
                                                              , patVar "y"
                                                              ]]
+
+        context "'as' pattern" $ do
+            let result = parseExpr "fn { u as Unit -> u }"
+            whenParsesToLambda result $ do
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [patVar "u" `patAs` patCtor "Unit"]

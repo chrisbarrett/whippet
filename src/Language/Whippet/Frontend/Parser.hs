@@ -212,7 +212,10 @@ discriminator :: Parser Discriminator
 discriminator =
     buildExpressionParser operators discTerm <?> "pattern discriminator"
   where
-    operators = [[Infix (pure DApp) AssocLeft]]
+    operators :: OperatorTable Parser Discriminator
+    operators = [ [Infix (reserved "as" *> pure DAs) AssocLeft]
+                , [Infix (pure DApp) AssocLeft]
+                ]
 
     discTerm = parens discriminator <|> dctor <|> dvar
 
@@ -296,6 +299,7 @@ reservedWords = [ "module"
                 , "then"
                 , "else"
                 , "fn"
+                , "as"
                 ]
 
 ctorName :: Parser Ident

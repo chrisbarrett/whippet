@@ -22,6 +22,7 @@ type Var = Ident
 data Discriminator
     = DVar Var (Maybe Type)
     | DCtor Ident
+    | DAs Discriminator Discriminator
     | DApp Discriminator Discriminator
     deriving (Eq, Ord, Show, Data)
 
