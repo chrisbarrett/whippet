@@ -50,7 +50,6 @@ data Expr
     | ELet Pat (Maybe Type) Expr
     | ELit Lit
     | EMatch Expr [Pat]
-    | EParen Expr
     | EVar Ident
     deriving (Eq, Ord, Show, Data)
 
