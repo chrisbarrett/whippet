@@ -796,7 +796,7 @@ spec = do
                 when (is _Right result) assertions
 
         context "single case" $ do
-            let result = parseExpr "match x { y -> 0 }"
+            let result = parseExpr "match x with { y -> 0 }"
             whenParsesToMatch result $ do
                 it "has the expected scrutinee" $
                     scrutinee result `shouldBe` [var "x"]
@@ -806,7 +806,7 @@ spec = do
                     bodyForms result `shouldBe` [int 0]
 
         context "matching multiple nullary constructors" $ do
-            let result = parseExpr "match b { True -> 0 | False -> 1 }"
+            let result = parseExpr "match b with { True -> 0 | False -> 1 }"
             whenParsesToMatch result $ do
                 it "has the expected scrutinee" $
                     scrutinee result `shouldBe` [var "b"]
@@ -816,13 +816,13 @@ spec = do
                     bodyForms result `shouldBe` [int 0, int 1]
 
         context "'as' pattern" $ do
-            let result = parseExpr "match x { u as Unit -> 1 }"
+            let result = parseExpr "match x with { u as Unit -> 1 }"
             whenParsesToMatch result $
                 it "has the expected binder" $
                     discriminators result `shouldBe` [dVar "u" `DAs` dCtor "Unit"]
 
         context "matching record type" $ do
-            let result = parseExpr "match t { {fst, snd} -> fst }"
+            let result = parseExpr "match t with { {fst, snd} -> fst }"
             whenParsesToMatch result $ do
                 it "has the expected scrutinee" $
                     scrutinee result `shouldBe` [var "t"]
@@ -832,7 +832,7 @@ spec = do
                     bodyForms result `shouldBe` [var "fst"]
 
         context "matching record type, leading comma" $ do
-            let result = parseExpr "match p { {,fst} -> fst }"
+            let result = parseExpr "match p with { {,fst} -> fst }"
             whenParsesToMatch result $ do
                 it "has the expected scrutinee" $
                     scrutinee result `shouldBe` [var "p"]
@@ -840,13 +840,43 @@ spec = do
                     discriminators result `shouldBe` [DRec [dVar "fst"]]
 
         context "simple wildcard" $ do
-            let result = parseExpr "match x { _ -> 1 }"
+            let result = parseExpr "match x with { _ -> 1 }"
             whenParsesToMatch result $
                 it "has a wildcard binder" $
                     discriminators result `shouldBe` [dWildcard "_"]
 
         context "named wildcard" $ do
-            let result = parseExpr "match x { _foo -> 1 }"
+            let result = parseExpr "match x with { _foo -> 1 }"
             whenParsesToMatch result $
                 it "has a wildcard binder" $
                     discriminators result `shouldBe` [dWildcard "_foo"]
+
+    describe "function application" $ do
+        let whenParsesToApp result assertions = do
+                it "parses to function application" $
+                    result `shouldSatisfy` is (_Right._EApp)
+                when (is _Right result) assertions
+
+            function :: Either Doc Expr -> [Expr]
+            function expr =
+                expr ^.. _Right._EApp._1
+
+            argument :: Either Doc Expr -> [Expr]
+            argument expr =
+                expr ^.. _Right._EApp._2
+
+        context "single argument" $ do
+            let result = parseExpr "f x"
+            whenParsesToApp result $ do
+                it "has the expected expression" $
+                    function result `shouldBe` [var "f"]
+                it "has the expected argument" $
+                    argument result `shouldBe` [var "x"]
+
+        context "curried application" $ do
+            let result = parseExpr "f x y"
+            whenParsesToApp result $ do
+                it "has the expected expression" $
+                    function result `shouldBe` [var "f" `EApp` var "x"]
+                it "has the expected argument" $
+                    argument result `shouldBe` [var "y"]

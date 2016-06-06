@@ -180,6 +180,7 @@ match =
     parser = do
         reserved "match"
         e <- expr
+        reserved "with"
         ps <- patterns
         pure (EMatch e ps)
 
@@ -327,6 +328,7 @@ reservedWords = [ "module"
                 , "fn"
                 , "as"
                 , "match"
+                , "with"
                 ]
 
 ctorName :: Parser Ident
