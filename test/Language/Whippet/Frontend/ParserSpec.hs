@@ -649,6 +649,9 @@ spec = do
         patCtor :: Text -> Discriminator
         patCtor x = DCtor (Ident emptySpan x)
 
+        patApp :: [Discriminator] -> Discriminator
+        patApp = foldl1 DApp
+
     describe "bare lambda" $ do
 
         let whenParsesToLambda result assertions = do
@@ -728,3 +731,20 @@ spec = do
                     discriminators result `shouldBe` [patCtor "True", patCtor "False"]
                 it "has the expected body" $
                     bodyForms result `shouldBe` [int 0, int 1]
+
+        context "matching constructors with parameters" $ do
+            let result = parseExpr "fn { None -> 0 | Some x -> 1 }"
+            whenParsesToLambda result $
+                it "has the expected binders" $
+                    discriminators result `shouldBe` [ patCtor "None"
+                                                     , patApp [patCtor "Some", patVar "x"]
+                                                     ]
+
+        context "matching constructor with multiple parameters" $ do
+            let result = parseExpr "fn { Pair x y  -> 1 }"
+            whenParsesToLambda result $
+                it "has the expected binder" $
+                    discriminators result `shouldBe` [patApp [ patCtor "Pair"
+                                                             , patVar "x"
+                                                             , patVar "y"
+                                                             ]]
