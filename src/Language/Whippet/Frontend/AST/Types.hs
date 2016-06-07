@@ -15,6 +15,7 @@ data AST
     = AstModule    Ident [AST]
     | AstSignature Ident [Decl]
     | AstDecl      Decl
+    | AstTypeclass Ident [Decl]
     deriving (Eq, Ord, Show)
 
 data Discriminator

@@ -182,6 +182,39 @@ spec = do
                                                   ]
 
 
+    describe "parsing typeclass declarations" $ do
+        let body :: ParsedAst -> [Decl]
+            body ast =
+                ast ^. _Right._AstTypeclass._2
+
+            name :: ParsedAst -> [Ident]
+            name ast =
+                ast ^.. _Right._AstTypeclass._1
+
+            declarations :: ParsedAst -> [Ident]
+            declarations ast =
+                ast ^.. _Right._AstTypeclass._2.traverse.identifier
+
+            whenParsesToTypeclass result assertions = do
+                it "parses to a typeclass" $
+                  result `shouldSatisfy` is (_Right._AstTypeclass)
+                when (is _Right result) assertions
+
+        context "empty typeclass" $ do
+            result <- parseFile "EmptyTypeclass.whippet"
+            whenParsesToTypeclass result $ do
+                it "has the expected identifier" $
+                    name result `shouldBe` [ident "EmptyTypeclass"]
+                it "has an empty body" $
+                    body result `shouldSatisfy` is _Empty
+
+        context "typeclass with functions" $ do
+            result <- parseFile "TypeclassWithFunctions.whippet"
+            whenParsesToTypeclass result $
+                it "has the expected declarations" $
+                    declarations result `shouldBe` [ident "foo", ident "bar"]
+
+
     -- Type declarations
 
     describe "parsing a record declaration" $ do

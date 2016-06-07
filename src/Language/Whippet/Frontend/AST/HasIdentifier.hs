@@ -40,11 +40,13 @@ instance HasIdentifier AST where
         get :: AST -> Ident
         get (AstModule i _)    = i
         get (AstSignature i _) = i
+        get (AstTypeclass i _) = i
         get (AstDecl d)        = d^.identifier
 
         set :: AST -> Ident -> AST
         set (AstModule _ x)    i = AstModule i x
         set (AstSignature _ x) i = AstSignature i x
+        set (AstTypeclass _ x) i = AstTypeclass i x
         set (AstDecl d)        i = AstDecl (d & identifier .~ i)
 
 instance HasIdentifier Decl where

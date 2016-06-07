@@ -1,0 +1,4 @@
+typeclass TypeclassWithFunctions {
+  let foo: A -> B
+  let bar: B -> C
+}

@@ -27,7 +27,7 @@ parseString =
     Trifecta.parseByteString ast mempty . fromString
 
 ast :: Parser AST
-ast = whiteSpace *> (astModule <|> astSignature <|> astDecl)
+ast = whiteSpace *> (astModule <|> astSignature <|> astDecl <|> astTypeclass)
 
 
 -- * Declarations
@@ -47,6 +47,14 @@ astModule =
     parser = do
         reserved "module"
         AstModule <$> ident <*> braces (many ast)
+
+astTypeclass :: Parser AST
+astTypeclass =
+    parser <?> "typeclass"
+  where
+    parser = do
+        reserved "typeclass"
+        AstTypeclass <$> ident <*> braces (many decFun)
 
 astDecl :: Parser AST
 astDecl = AstDecl <$> declaration
@@ -243,7 +251,9 @@ numberLiteral :: Parser Expr
 numberLiteral =
     parser <?> "number"
   where
-    parser = ELit . either LitInt LitScientific <$> integerOrScientific
+    parser = do
+        n <- integerOrScientific
+        pure (ELit (either LitInt LitScientific n))
 
 stringLiteral :: Parser Expr
 stringLiteral =
