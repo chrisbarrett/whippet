@@ -682,36 +682,29 @@ spec = do
             bodyForms expr =
                 expr ^.. _Right._EFn.traverse.patBody
 
+            whenParsesToLambda result assertions = do
+                it "parses to a lambda expression" $
+                    result `shouldSatisfy` is (_Right._EFn)
+                when (is _Right result) assertions
+
+
         describe "bare lambda" $ do
-
-            let whenParsesToLambda result assertions = do
-                    it "parses to a lambda expression" $
-                        result `shouldSatisfy` is (_Right._EFn)
-                    when (is _Right result) assertions
-
-                discriminator :: Either Doc Expr -> [Discriminator]
-                discriminator expr =
-                    expr ^.. _Right._EFn.traverse.patDiscriminator
-
-                body :: Either Doc Expr -> [Expr]
-                body expr =
-                    expr ^.. _Right._EFn.traverse.patBody
 
             context "named binding" $ do
                 let result = parseExpr "fn x -> 0"
                 whenParsesToLambda result $ do
                     it "has the expected binder" $
-                        discriminator result `shouldBe` [dVar "x"]
+                        discriminators result `shouldBe` [dVar "x"]
                     it "has the expected body" $
-                        body result `shouldBe` [int 0]
+                        bodyForms result `shouldBe` [int 0]
 
             context "named binding with type annotation" $ do
                 let result = parseExpr "fn x: Int -> 0"
                 whenParsesToLambda result $ do
                     it "has the expected binder" $
-                        discriminator result `shouldBe` [dVar "x" `DAnn` nominalType "Int"]
+                        discriminators result `shouldBe` [dVar "x" `DAnn` nominalType "Int"]
                     it "has the expected body" $
-                        body result `shouldBe` [int 0]
+                        bodyForms result `shouldBe` [int 0]
 
             context "'as' pattern" $ do
                 let result = parseExpr "fn u as Unit -> 1"
@@ -729,11 +722,6 @@ spec = do
 
 
         describe "branching lambda" $ do
-
-            let whenParsesToLambda result assertions = do
-                    it "parses to a lambda expression" $
-                        result `shouldSatisfy` is (_Right._EFn)
-                    when (is _Right result) assertions
 
             context "single case" $ do
                 let result = parseExpr "fn { x: Int -> 0 }"
