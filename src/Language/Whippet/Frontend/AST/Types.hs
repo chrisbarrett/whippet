@@ -48,7 +48,7 @@ data Expr
     | EHole Ident
     | EIf Expr Expr Expr
     | EFn [Pat]
-    | ELet Pat (Maybe Type) Expr
+    | ELet Discriminator Expr Expr
     | ELit Lit
     | EMatch Expr [Pat]
     | EVar Ident

@@ -168,12 +168,26 @@ expr = do
         <|> listLiteral
         <|> recordLiteral
         <|> match
+        <|> let'
         <|> variable
         <|> hole
         <|> numberLiteral
 
     variable = EVar <$> ident
     char = ELit . LitChar <$> charLiteral
+
+let' :: Parser Expr
+let' =
+    parser <?> "let expression"
+  where
+    parser = do
+        reserved "let"
+        d <- discriminator
+        equals
+        e <- expr
+        reserved "in"
+        b <- expr
+        pure (ELet d e b)
 
 match :: Parser Expr
 match =
@@ -325,6 +339,8 @@ reservedWords = [ "module"
                 , "record"
                 , "let"
                 , "if"
+                , "let"
+                , "in"
                 , "then"
                 , "else"
                 , "fn"

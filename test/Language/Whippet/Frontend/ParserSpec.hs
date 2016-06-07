@@ -906,3 +906,62 @@ spec = do
                     function result `shouldBe` [var "f" `EApp` var "x"]
                 it "has the expected argument" $
                     argument result `shouldBe` [var "y"]
+
+    describe "let...in" $ do
+
+        let whenParsesToLet result assertions = do
+                it "parses to a let expression" $
+                    result `shouldSatisfy` is (_Right._ELet)
+                when (is _Right result) assertions
+
+            discriminator :: Either Doc Expr -> [Discriminator]
+            discriminator expr =
+                expr ^.. _Right._ELet._1
+
+            definition :: Either Doc Expr -> [Expr]
+            definition expr =
+                expr ^.. _Right._ELet._2
+
+            body :: Either Doc Expr -> [Expr]
+            body expr =
+                expr ^.. _Right._ELet._3
+
+        context "named binding" $ do
+            let result = parseExpr "let x = 0 in 1"
+            whenParsesToLet result $ do
+                it "has the expected binder" $
+                    discriminator result `shouldBe` [dVar "x"]
+                it "has the expected definition" $
+                    definition result `shouldBe` [int 0]
+                it "has the expected body" $
+                    body result `shouldBe` [int 1]
+
+        context "named binding with type annotation" $ do
+            let result = parseExpr "let x: Int = 0 in 1"
+            whenParsesToLet result $ do
+                it "has the expected binder" $
+                    discriminator result `shouldBe` [dVar "x" `DAnn` nominalType "Int"]
+                it "has the expected definition" $
+                    definition result `shouldBe` [int 0]
+                it "has the expected body" $
+                    body result `shouldBe` [int 1]
+
+        context "'as' pattern" $ do
+            let result = parseExpr "let b as True = x in e"
+            whenParsesToLet result $ do
+                it "has the expected binder" $
+                    discriminator result `shouldBe` [dVar "b" `DAs` dCtor "True"]
+                it "has the expected definition" $
+                    definition result `shouldBe` [var "x"]
+                it "has the expected body" $
+                    body result `shouldBe` [var "e"]
+
+        context "structural type" $ do
+            let result = parseExpr "let {fst, snd} = p in snd"
+            whenParsesToLet result $ do
+                it "has the expected binder" $
+                    discriminator result `shouldBe` [DRec [dVar "fst", dVar "snd"]]
+                it "has the expected definition" $
+                    definition result `shouldBe` [var "p"]
+                it "has the expected body" $
+                    body result `shouldBe` [var "snd"]
