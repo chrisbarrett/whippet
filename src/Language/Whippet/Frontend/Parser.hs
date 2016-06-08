@@ -35,14 +35,15 @@ ast = do
 
 astOpen :: Parser AST
 astOpen =
-    parser <?> "open statement"
-  where
-    parser = do
-        reserved "open"
-        i <- moduleName
-        a <- optional (reserved "as" *> moduleName)
-        h <- optional (reserved "hiding" *> parens (ident `sepBy` comma))
-        pure (AstOpen (Open i a h))
+    AstOpen <$> parseOpen <?> "open statement"
+
+parseOpen :: Parser Open
+parseOpen = do
+    reserved "open"
+    i <- moduleName
+    a <- optional (reserved "as" *> moduleName)
+    h <- optional (reserved "hiding" *> parens (optional comma *> ident `sepBy` comma))
+    pure (Open i a h)
 
 astSignature :: Parser AST
 astSignature =
@@ -189,6 +190,7 @@ expr = do
     operators = [[Infix (pure EApp) AssocLeft]]
     term =  fn
         <|> ifThenElse
+        <|> openExpr
         <|> stringLiteral
         <|> char
         <|> listLiteral
@@ -201,6 +203,16 @@ expr = do
 
     variable = EVar <$> ident
     char = ELit . LitChar <$> charLiteral
+
+openExpr :: Parser Expr
+openExpr =
+    parser <?> "open expression"
+  where
+    parser = do
+        o <- parseOpen
+        reserved "in"
+        b <- expr
+        pure (EOpen o b)
 
 let' :: Parser Expr
 let' =

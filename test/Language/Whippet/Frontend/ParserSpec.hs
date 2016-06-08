@@ -1036,6 +1036,12 @@ spec = do
                 it "has the expected hidden identifiers" $
                     hidden result `shouldBe` [ident "foo", ident "bar"]
 
+        describe "optional comma in 'hiding'" $ do
+            let result = parseAst "open M hiding (,foo,bar)"
+            whenParsesToOpen result $ do
+                it "has the expected hidden identifiers" $
+                    hidden result `shouldBe` [ident "foo", ident "bar"]
+
         describe "open with renaming" $ do
             let result = parseAst "open M as X"
             whenParsesToOpen result $ do
@@ -1053,3 +1059,74 @@ spec = do
                     rename result `shouldBe` [ident "X"]
                 it "has the expected hidden identifiers" $
                     hidden result `shouldBe` [ident "x", ident "y"]
+
+    describe "open...in expression" $ do
+
+        let whenParsesToOpen result assertions = do
+                it "parses to an 'open' expression" $
+                    result `shouldSatisfy` is (_Right._EOpen)
+                when (is _Right result) assertions
+
+            hidden :: Either Doc Expr -> [Ident]
+            hidden ast =
+                ast ^. _Right._EOpen._1.openHiding._Just
+
+            rename :: Either Doc Expr -> [Ident]
+            rename ast =
+                ast ^.. _Right._EOpen._1.openAs._Just
+
+            identifier :: Either Doc Expr -> [Ident]
+            identifier ast =
+                ast ^.. _Right._EOpen._1.openIdent
+
+            body :: Either Doc Expr -> [Expr]
+            body ast =
+                ast ^.. _Right._EOpen._2
+
+        describe "simple open" $ do
+            let result = parseExpr "open M in 0"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+                it "has the expected body" $
+                    body result `shouldBe` [int 0]
+
+        describe "open module with path" $ do
+            let result = parseExpr "open M.N in 0"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M.N"]
+                it "has the expected body" $
+                    body result `shouldBe` [int 0]
+
+        describe "open hiding" $ do
+            let result = parseExpr "open M hiding (foo, bar) in 0"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+                it "has the expected hidden identifiers" $
+                    hidden result `shouldBe` [ident "foo", ident "bar"]
+                it "has the expected body" $
+                    body result `shouldBe` [int 0]
+
+        describe "open with renaming" $ do
+            let result = parseExpr "open M as X in 0"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+                it "has the expected rebinding" $
+                    rename result `shouldBe` [ident "X"]
+                it "has the expected body" $
+                    body result `shouldBe` [int 0]
+
+        describe "open with renaming and hidden" $ do
+            let result = parseExpr "open M as X hiding (x,y) in 0"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+                it "has the expected rebinding" $
+                    rename result `shouldBe` [ident "X"]
+                it "has the expected hidden identifiers" $
+                    hidden result `shouldBe` [ident "x", ident "y"]
+                it "has the expected body" $
+                    body result `shouldBe` [int 0]

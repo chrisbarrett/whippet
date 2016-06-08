@@ -24,7 +24,7 @@ data Open = Open {
     , _openAs     :: Maybe Ident
     , _openHiding :: Maybe [Ident]
     }
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 data Discriminator
     = DVar Ident
@@ -61,6 +61,7 @@ data Expr
     | ELit Lit
     | EMatch Expr [Pat]
     | EVar Ident
+    | EOpen Open Expr
     deriving (Eq, Ord, Show, Data)
 
 instance Plated Expr where
