@@ -27,18 +27,30 @@ parseString =
     Trifecta.parseByteString ast mempty . fromString
 
 ast :: Parser AST
-ast = whiteSpace *> (astModule <|> astSignature <|> astDecl <|> astTypeclass)
+ast = do
+    whiteSpace
+    astOpen <|> astModule <|> astSignature <|> astDecl <|> astTypeclass
 
+-- * Top-level
 
--- * Declarations
+astOpen :: Parser AST
+astOpen =
+    parser <?> "open statement"
+  where
+    parser = do
+        reserved "open"
+        i <- moduleName
+        a <- optional (reserved "as" *> moduleName)
+        h <- optional (reserved "hiding" *> parens (ident `sepBy` comma))
+        pure (AstOpen (Open i a h))
 
 astSignature :: Parser AST
 astSignature =
     parser <?> "signature"
   where
     parser = do
-      reserved "signature"
-      AstSignature <$> ident <*> braces (many declaration)
+        reserved "signature"
+        AstSignature <$> moduleName <*> braces (many declaration)
 
 astModule :: Parser AST
 astModule =
@@ -46,7 +58,7 @@ astModule =
   where
     parser = do
         reserved "module"
-        AstModule <$> ident <*> braces (many ast)
+        AstModule <$> moduleName <*> braces (many ast)
 
 astTypeclass :: Parser AST
 astTypeclass =
@@ -54,7 +66,7 @@ astTypeclass =
   where
     parser = do
         reserved "typeclass"
-        AstTypeclass <$> ident <*> braces (many decFun)
+        AstTypeclass <$> typeclassName <*> braces (many decFun)
 
 astDecl :: Parser AST
 astDecl = AstDecl <$> declaration
@@ -65,7 +77,7 @@ decType =
   where
     parser = do
         reserved "type"
-        id <- ident
+        id <- typeName
         tyArgs <- many typeParameter
         concreteType id tyArgs <|> abstractType id tyArgs
 
@@ -111,7 +123,7 @@ decRecord =
   where
     parser = do
         reserved "record"
-        i <- ident
+        i <- typeName
         ts <- many typeParameter
         equals
         fs <- recordFields
@@ -129,7 +141,13 @@ typeRef =
                 ]
 
     tyTerm =
-        parens typeRef <|> nominalType <|> structuralType
+        parens typeRef <|> nominalType <|> structuralType <|> typeVariable
+
+typeVariable :: Parser Type
+typeVariable =
+    parser <?> "type variable"
+  where
+    parser = TyVar <$> ident
 
 structuralType :: Parser Type
 structuralType =
@@ -140,7 +158,7 @@ nominalType :: Parser Type
 nominalType =
     parser <?> "type name"
   where
-    parser = TyNominal <$> ident
+    parser = TyNominal <$> typeName
 
 recordFields :: Parser [Field]
 recordFields = braces (optional comma *> field `sepBy1` comma)
@@ -214,7 +232,7 @@ typeAnnotation =
   where
     parser = do
       colon
-      choice [nominalType, structuralType, parens typeRef]
+      parens typeRef <|> nominalType <|> structuralType <|> typeVariable
 
 ifThenElse :: Parser Expr
 ifThenElse =
@@ -357,11 +375,33 @@ reservedWords = [ "module"
                 , "as"
                 , "match"
                 , "with"
+                , "open"
+                , "hiding"
                 ]
 
 ctorName :: Parser Ident
-ctorName = do
-    let style = identStyle & styleStart .~ upper
+ctorName =
+    parser <?> "constructor name"
+  where
+    parser = do
+        let style = identStyle & styleStart .~ upper
+        (s :~ span) <- spanned (Trifecta.ident style)
+        pure (Ident span s)
+
+typeName :: Parser Ident
+typeName = ctorName
+    <?> "type name"
+
+typeclassName :: Parser Ident
+typeclassName = moduleName
+    <?> "typeclass name"
+
+moduleName :: Parser Ident
+moduleName = do
+    let style =
+            identStyle
+               & styleStart  .~ upper
+               & styleLetter .~ (alphaNum <|> oneOf "._")
     (s :~ span) <- spanned (Trifecta.ident style)
     pure (Ident span s)
 

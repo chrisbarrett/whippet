@@ -64,6 +64,9 @@ typeToText :: Type -> Text
 typeToText (TyNominal i) =
     _identLabel i
 
+typeToText (TyVar i) =
+    _identLabel i
+
 typeToText (TyApp x y) =
     Text.unwords [typeToText x, typeToText y]
 
@@ -81,6 +84,9 @@ ident = Ident emptySpan
 
 nominalType :: Text -> Type
 nominalType = TyNominal . ident
+
+tyVar :: Text -> Type
+tyVar = TyVar . ident
 
 int :: Integer -> Expr
 int = ELit . LitInt
@@ -248,7 +254,7 @@ spec = do
                 it "has the expected fields" $
                     fieldLabels result `shouldBe` [ident "fst", ident "snd"]
                 it "has the expected field types" $
-                    fieldTypes result `shouldBe` [nominalType "a", nominalType "b"]
+                    fieldTypes result `shouldBe` [tyVar "a", tyVar "b"]
 
         describe "record type with comma before first field" $ do
             result <- parseFile "RecordOptionalLeadingComma.whippet"
@@ -986,3 +992,64 @@ spec = do
                     definition result `shouldBe` [var "p"]
                 it "has the expected body" $
                     body result `shouldBe` [var "snd"]
+
+    describe "open statement" $ do
+
+        let parseAst :: BS.ByteString -> ParsedAst
+            parseAst =
+                resultToEither . Trifecta.parseByteString (Parser.ast <* Trifecta.eof) mempty
+
+            whenParsesToOpen result assertions = do
+                it "parses to an 'open' statement" $
+                    result `shouldSatisfy` is (_Right._AstOpen)
+                when (is _Right result) assertions
+
+            hidden :: ParsedAst -> [Ident]
+            hidden ast =
+                ast ^. _Right._AstOpen.openHiding._Just
+
+            rename :: ParsedAst -> [Ident]
+            rename ast =
+                ast ^.. _Right._AstOpen.openAs._Just
+
+            identifier :: ParsedAst -> [Ident]
+            identifier ast =
+                ast ^.. _Right._AstOpen.openIdent
+
+        describe "simple open" $ do
+            let result = parseAst "open M"
+            whenParsesToOpen result $
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+
+        describe "open module with path" $ do
+            let result = parseAst "open M.N"
+            whenParsesToOpen result $
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M.N"]
+
+        describe "open hiding" $ do
+            let result = parseAst "open M hiding (foo, bar)"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+                it "has the expected hidden identifiers" $
+                    hidden result `shouldBe` [ident "foo", ident "bar"]
+
+        describe "open with renaming" $ do
+            let result = parseAst "open M as X"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+                it "has the expected rebinding" $
+                    rename result `shouldBe` [ident "X"]
+
+        describe "open with renaming and hidden" $ do
+            let result = parseAst "open M as X hiding (x,y)"
+            whenParsesToOpen result $ do
+                it "has the expected identifier" $
+                    identifier result `shouldBe` [ident "M"]
+                it "has the expected rebinding" $
+                    rename result `shouldBe` [ident "X"]
+                it "has the expected hidden identifiers" $
+                    hidden result `shouldBe` [ident "x", ident "y"]

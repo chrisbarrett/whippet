@@ -16,6 +16,14 @@ data AST
     | AstSignature Ident [Decl]
     | AstDecl      Decl
     | AstTypeclass Ident [Decl]
+    | AstOpen      Open
+    deriving (Eq, Ord, Show)
+
+data Open = Open {
+      _openIdent  :: Ident
+    , _openAs     :: Maybe Ident
+    , _openHiding :: Maybe [Ident]
+    }
     deriving (Eq, Ord, Show)
 
 data Discriminator
@@ -78,6 +86,7 @@ data Field = Field {
 
 data Type
     = TyNominal    Ident
+    | TyVar        Ident
     | TyStructural [Field]
     | TyApp        Type Type
     | TyFun        Type Type

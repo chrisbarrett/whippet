@@ -41,5 +41,8 @@ makePrisms ''Expr
 makeLenses ''Lit
 makePrisms ''Lit
 
+makeLenses ''Open
+makePrisms ''Open
+
 text :: Lens' Ident Text
 text = identLabel
