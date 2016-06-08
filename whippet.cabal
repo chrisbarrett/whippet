@@ -18,7 +18,6 @@ library
   exposed-modules:     Language.Whippet.Frontend.AST
                      , Language.Whippet.Frontend.AST.Types
                      , Language.Whippet.Frontend.AST.Lenses
-                     , Language.Whippet.Frontend.AST.HasIdentifier
                      , Language.Whippet.Frontend.Parser
   build-depends:       base >= 4.7 && < 5
                      , bytestring
@@ -27,6 +26,7 @@ library
                      , mtl
                      , parsers
                      , scientific
+                     , semigroups
                      , text
                      , trifecta
   default-language:    Haskell2010
@@ -50,6 +50,7 @@ test-suite whippet-test
                      , utf8-string
                      , filepath
                      , lens
+                     , semigroups
                      , text
                      , trifecta
                      , whippet

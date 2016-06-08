@@ -5,10 +5,13 @@ module Language.Whippet.Frontend.Parser where
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Trans           (MonadIO)
+import qualified Data.List.NonEmpty            as NonEmpty
+import qualified Data.Maybe                    as Maybe
 import           Data.Monoid                   ((<>))
 import           Data.String                   (fromString)
 import           Data.Text                     (Text)
 import qualified Data.Text                     as Text
+import qualified Data.Tuple                    as Tuple
 import           Language.Whippet.Frontend.AST
 import           Text.Parser.Expression
 import           Text.Parser.LookAhead         (lookAhead)
@@ -40,7 +43,7 @@ astOpen =
 parseOpen :: Parser Open
 parseOpen = do
     reserved "open"
-    i <- moduleName
+    i <- moduleId
     a <- optional (reserved "as" *> moduleName)
     h <- optional (reserved "hiding" *> parens (optional comma *> ident `sepBy` comma))
     pure (Open i a h)
@@ -51,7 +54,7 @@ astSignature =
   where
     parser = do
         reserved "signature"
-        AstSignature <$> moduleName <*> braces (many declaration)
+        AstSignature <$> moduleId <*> braces (many declaration)
 
 astModule :: Parser AST
 astModule =
@@ -59,7 +62,7 @@ astModule =
   where
     parser = do
         reserved "module"
-        AstModule <$> moduleName <*> braces (many ast)
+        AstModule <$> moduleId <*> braces (many ast)
 
 astTypeclass :: Parser AST
 astTypeclass =
@@ -408,12 +411,18 @@ typeclassName :: Parser Ident
 typeclassName = moduleName
     <?> "typeclass name"
 
+moduleId :: Parser ModuleId
+moduleId =
+    parser <?> "module ID"
+  where
+    parser = ModuleId . NonEmpty.fromList <$> moduleName `sepBy1` dot
+
 moduleName :: Parser Ident
 moduleName = do
     let style =
             identStyle
                & styleStart  .~ upper
-               & styleLetter .~ (alphaNum <|> oneOf "._")
+               & styleLetter .~ (alphaNum <|> oneOf "_")
     (s :~ span) <- spanned (Trifecta.ident style)
     pure (Ident span s)
 

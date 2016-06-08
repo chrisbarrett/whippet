@@ -6,22 +6,25 @@ module Language.Whippet.Frontend.ParserSpec where
 
 import           Control.Lens
 import           Control.Lens.Extras
-import           Control.Monad                    (when)
-import qualified Data.ByteString.Internal         as BS
-import           Data.Monoid                      ((<>))
-import           Data.String                      (fromString)
-import           Data.Text                        (Text)
-import qualified Data.Text                        as Text
+import           Control.Monad                           (when)
+import qualified Data.ByteString.Internal                as BS
+import           Data.List.NonEmpty                      (NonEmpty)
+import qualified Data.List.NonEmpty                      as NonEmpty
+import           Data.Monoid                             ((<>))
+import           Data.String                             (fromString)
+import           Data.Text                               (Text)
+import qualified Data.Text                               as Text
 import           Debug.Trace
 import           Language.Whippet.Frontend.AST
-import qualified Language.Whippet.Frontend.Parser as Parser
-import qualified Paths_whippet                    as Paths
-import           System.FilePath.Posix            as FilePath
+import           Language.Whippet.Frontend.HasIdentifier
+import qualified Language.Whippet.Frontend.Parser        as Parser
+import qualified Paths_whippet                           as Paths
+import           System.FilePath.Posix                   as FilePath
 import           Test.Hspec
-import           Text.PrettyPrint.ANSI.Leijen     (Doc)
-import qualified Text.Trifecta                    as Trifecta
-import qualified Text.Trifecta.Delta              as Trifecta
-import qualified Text.Trifecta.Result             as Trifecta
+import           Text.PrettyPrint.ANSI.Leijen            (Doc)
+import qualified Text.Trifecta                           as Trifecta
+import qualified Text.Trifecta.Delta                     as Trifecta
+import qualified Text.Trifecta.Result                    as Trifecta
 
 type ParsedAst = Either Doc AST
 
@@ -47,11 +50,6 @@ parseFileFromResources parser name = do
 
 parseFile name =
     runIO $ parseFileFromResources (Parser.ast <* Trifecta.eof) name
-
-astHasIdentifier :: Text -> ParsedAst -> Bool
-astHasIdentifier s =
-   (==) s . view (_Right.identifier.text)
-
 
 fieldToText :: Field -> Text
 fieldToText Field {..} =
@@ -112,7 +110,7 @@ spec = do
             result <- parseFile "EmptyModule.whippet"
             whenParsesToModule result $ do
                 it "has the expected identifier" $
-                    result `shouldSatisfy` astHasIdentifier "ExampleModule"
+                    result ^.. _Right.identifier `shouldBe` [ident "ExampleModule"]
                 it "has an empty body" $
                     body result `shouldSatisfy` is _Empty
 
@@ -143,7 +141,7 @@ spec = do
             result <- parseFile "EmptySignature.whippet"
             whenParsesToSignature result $ do
                 it "has the expected identifier" $
-                    result `shouldSatisfy` astHasIdentifier "ExampleSignature"
+                    result ^.. _Right.identifier `shouldBe` [ident "ExampleSignature"]
                 it "has an empty body" $
                     decls result `shouldSatisfy` is _Empty
 
@@ -177,7 +175,7 @@ spec = do
             result <- parseFile "Option.whippet"
             whenParsesToSignature result $ do
                 it "has the expected module name" $
-                    result `shouldSatisfy` astHasIdentifier "Option"
+                    result ^.. _Right.identifier `shouldBe` [ident "Option"]
                 it "has the expected identifiers" $
                     identifiers result `shouldBe` [ ident "T"
                                                   , ident "some?"
@@ -237,12 +235,11 @@ spec = do
                     result `shouldSatisfy` is (_Right._AstDecl._DecRecordType)
                 when (is _Right result) assertions
 
-
         describe "record type" $ do
             result <- parseFile "IntPair.whippet"
             whenParsesToRecordDecl result $ do
                 it "has the expected identifier" $
-                    result `shouldSatisfy` astHasIdentifier "IntPair"
+                    result ^.. _Right.identifier `shouldBe` [ident "IntPair"]
                 it "has the expected fields" $
                     fieldLabels result `shouldBe` [ident "fst", ident "snd"]
                 it "has the expected field types" $
@@ -267,6 +264,10 @@ spec = do
             ctorsFromAst ast =
                 ast ^. _Right._AstDecl._DecDataType._3
 
+            typeName :: ParsedAst -> [Ident]
+            typeName ast =
+                ast ^.. _Right.identifier
+
             typeParameters :: ParsedAst -> [Ident]
             typeParameters ast =
                 ast ^.. _Right._AstDecl._DecDataType._2.traverse.identifier
@@ -279,6 +280,16 @@ spec = do
             ctorParamTypes ast =
                 ast ^.. to ctorsFromAst.traverse.ctorParams.traverse
                        .to typeIdentifiers._Just.each
+
+            typeIdentifiers :: Type -> Maybe [Ident]
+            typeIdentifiers (TyNominal i)   = Just [i]
+            typeIdentifiers (TyVar i)       = Just [i]
+            typeIdentifiers TyStructural {} = Nothing
+            typeIdentifiers (TyApp x y)     = concat <$> sequence [typeIdentifiers x, typeIdentifiers y]
+            typeIdentifiers (TyFun a b) = do
+                as <- typeIdentifiers a
+                bs <- typeIdentifiers b
+                pure (as <> bs)
 
             whenParsesToTypeDecl result assertions = do
                 it "parses to a type decl" $
@@ -294,8 +305,8 @@ spec = do
         describe "abstract type" $ do
             result <- parseFile "Void.whippet"
             whenParsesToAbsTypeDecl result $
-                it "has the expected identifier" $
-                    result `shouldSatisfy` astHasIdentifier "Void"
+                it "has the expected type name" $
+                    typeName result `shouldBe` [ident "Void"]
 
         describe "nullary constructor" $ do
             result <- parseFile "Unit.whippet"
@@ -338,13 +349,13 @@ spec = do
                     ctorParamTypes result `shouldBe` [ident "e", ident "a"]
 
     describe "parsing a function signature" $ do
-        let ident :: ParsedAst -> Text
-            ident ast =
-                ast ^. _Right._AstDecl._DecFun._1.identifier.text
-
-            fnType :: ParsedAst -> Text
+        let fnType :: ParsedAst -> Text
             fnType ast =
                 ast ^. _Right._AstDecl._DecFun._2.to typeToText
+
+            fnName :: ParsedAst -> [Ident]
+            fnName ast =
+                ast ^.. _Right.identifier
 
             whenParsesToSigWithFn result assertions = do
                 it "parses to a function signature" $
@@ -355,7 +366,7 @@ spec = do
             result <- parseFile "UnitFunSig.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "unit"
+                    fnName result `shouldBe` [ident "unit"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "Unit"
 
@@ -363,7 +374,7 @@ spec = do
             result <- parseFile "IdentityFunSig.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "identity"
+                    fnName result `shouldBe` [ident "identity"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(a -> a)"
 
@@ -371,7 +382,7 @@ spec = do
             result <- parseFile "ConstFunSig.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "const"
+                    fnName result `shouldBe` [ident "const"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(a -> (b -> a))"
 
@@ -379,7 +390,7 @@ spec = do
             result <- parseFile "FunctionTyParens.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "const"
+                    fnName result `shouldBe` [ident "const"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(a -> (b -> a))"
 
@@ -387,7 +398,7 @@ spec = do
             result <- parseFile "FunctionTyCtor.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "getOpt"
+                    fnName result `shouldBe` [ident "getOpt"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(a -> (Option a -> a))"
 
@@ -395,7 +406,7 @@ spec = do
             result <- parseFile "ListMapFun.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "map"
+                    fnName result `shouldBe` [ident "map"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "((a -> b) -> (List a -> List b))"
 
@@ -403,7 +414,7 @@ spec = do
             result <- parseFile "StructuralTypeParameterInput.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "first"
+                    fnName result `shouldBe` [ident "first"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "({fst: A, snd: B} -> A)"
 
@@ -411,7 +422,7 @@ spec = do
             result <- parseFile "StructuralTypeParameterOutput.whippet"
             whenParsesToSigWithFn result $ do
                 it "has the expected identifier" $
-                    ident result `shouldBe` "box"
+                    fnName result `shouldBe` [ident "box"]
                 it "has the expected type parameters" $
                     fnType result `shouldBe` "(A -> {unpack: A})"
 
@@ -433,14 +444,13 @@ spec = do
                   result `shouldSatisfy` is (_Right._EVar)
                 when (is _Right result) assertions
 
-            label :: Either Doc Expr -> Text
-            label = view (_Right._EVar.identifier.text)
+            var = toListOf (_Right._EVar.identifier)
 
         describe "identifier ending with an underscore" $ do
             let result = parseExpr "x_"
             whenParsesToVar result $
                 it "has the expected identifier" $
-                    label result `shouldBe` "x_"
+                    var result `shouldBe` [ident "x_"]
 
         describe "identifier starting with a question mark" $ do
             let result = parseExpr "?x"
@@ -451,7 +461,7 @@ spec = do
             let result = parseExpr "x?"
             whenParsesToVar result $
                 it "has the expected identifier" $
-                    label result `shouldBe` "x?"
+                    var result `shouldBe` [ident "x?"]
 
         describe "identifier starting with a number" $ do
             let result = parseExpr "1x"
@@ -463,7 +473,7 @@ spec = do
             let result = parseExpr "x1"
             whenParsesToVar result $
                 it "has the expected identifier" $
-                    label result `shouldBe` "x1"
+                    var result `shouldBe` [ident "x1"]
 
 
     describe "holes" $ do
@@ -1012,49 +1022,49 @@ spec = do
             rename ast =
                 ast ^.. _Right._AstOpen.openAs._Just
 
-            identifier :: ParsedAst -> [Ident]
-            identifier ast =
-                ast ^.. _Right._AstOpen.openIdent
+            modId :: ParsedAst -> [Ident]
+            modId ast =
+                ast ^. _Right._AstOpen._Open._1._ModuleId.to NonEmpty.toList
 
         describe "simple open" $ do
             let result = parseAst "open M"
             whenParsesToOpen result $
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M"]
 
         describe "open module with path" $ do
             let result = parseAst "open M.N"
             whenParsesToOpen result $
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M.N"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M", ident "N"]
 
         describe "open hiding" $ do
             let result = parseAst "open M hiding (foo, bar)"
             whenParsesToOpen result $ do
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M"]
                 it "has the expected hidden identifiers" $
                     hidden result `shouldBe` [ident "foo", ident "bar"]
 
         describe "optional comma in 'hiding'" $ do
             let result = parseAst "open M hiding (,foo,bar)"
-            whenParsesToOpen result $ do
+            whenParsesToOpen result $
                 it "has the expected hidden identifiers" $
                     hidden result `shouldBe` [ident "foo", ident "bar"]
 
         describe "open with renaming" $ do
             let result = parseAst "open M as X"
             whenParsesToOpen result $ do
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M"]
                 it "has the expected rebinding" $
                     rename result `shouldBe` [ident "X"]
 
         describe "open with renaming and hidden" $ do
             let result = parseAst "open M as X hiding (x,y)"
             whenParsesToOpen result $ do
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M"]
                 it "has the expected rebinding" $
                     rename result `shouldBe` [ident "X"]
                 it "has the expected hidden identifiers" $
@@ -1067,6 +1077,10 @@ spec = do
                     result `shouldSatisfy` is (_Right._EOpen)
                 when (is _Right result) assertions
 
+            modId :: Either Doc Expr -> [Ident]
+            modId ast =
+                ast ^. _Right._EOpen._1._Open._1._ModuleId.to NonEmpty.toList
+
             hidden :: Either Doc Expr -> [Ident]
             hidden ast =
                 ast ^. _Right._EOpen._1.openHiding._Just
@@ -1075,10 +1089,6 @@ spec = do
             rename ast =
                 ast ^.. _Right._EOpen._1.openAs._Just
 
-            identifier :: Either Doc Expr -> [Ident]
-            identifier ast =
-                ast ^.. _Right._EOpen._1.openIdent
-
             body :: Either Doc Expr -> [Expr]
             body ast =
                 ast ^.. _Right._EOpen._2
@@ -1086,24 +1096,24 @@ spec = do
         describe "simple open" $ do
             let result = parseExpr "open M in 0"
             whenParsesToOpen result $ do
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M"]
                 it "has the expected body" $
                     body result `shouldBe` [int 0]
 
         describe "open module with path" $ do
             let result = parseExpr "open M.N in 0"
             whenParsesToOpen result $ do
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M.N"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M", ident "N"]
                 it "has the expected body" $
                     body result `shouldBe` [int 0]
 
         describe "open hiding" $ do
             let result = parseExpr "open M hiding (foo, bar) in 0"
             whenParsesToOpen result $ do
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M"]
                 it "has the expected hidden identifiers" $
                     hidden result `shouldBe` [ident "foo", ident "bar"]
                 it "has the expected body" $
@@ -1112,8 +1122,8 @@ spec = do
         describe "open with renaming" $ do
             let result = parseExpr "open M as X in 0"
             whenParsesToOpen result $ do
-                it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                it "has the expected module ID" $
+                    modId result `shouldBe` [ident "M"]
                 it "has the expected rebinding" $
                     rename result `shouldBe` [ident "X"]
                 it "has the expected body" $
@@ -1123,7 +1133,7 @@ spec = do
             let result = parseExpr "open M as X hiding (x,y) in 0"
             whenParsesToOpen result $ do
                 it "has the expected identifier" $
-                    identifier result `shouldBe` [ident "M"]
+                    modId result `shouldBe` [ident "M"]
                 it "has the expected rebinding" $
                     rename result `shouldBe` [ident "X"]
                 it "has the expected hidden identifiers" $

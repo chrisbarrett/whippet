@@ -1,26 +1,16 @@
-module Language.Whippet.Frontend.AST.HasIdentifier where
+module Language.Whippet.Frontend.HasIdentifier where
 
 import           Control.Lens                         hiding (get, set)
+import qualified Data.List.NonEmpty                   as NonEmpty
 import           Data.Monoid
 import           Language.Whippet.Frontend.AST.Lenses
 import           Language.Whippet.Frontend.AST.Types
 
-typeIdentifiers :: Type -> Maybe [Ident]
-
-typeIdentifiers (TyNominal i)   = Just [i]
-typeIdentifiers (TyVar i)       = Just [i]
-typeIdentifiers TyStructural {} = Nothing
-
-typeIdentifiers (TyApp x y) =
-    concat <$> sequence [typeIdentifiers x, typeIdentifiers y]
-
-typeIdentifiers (TyFun a b) = do
-    as <- typeIdentifiers a
-    bs <- typeIdentifiers b
-    pure (as <> bs)
-
 class HasIdentifier a where
     identifier :: Getter a Ident
+
+instance HasIdentifier ModuleId where
+    identifier = _ModuleId.to NonEmpty.last
 
 instance HasIdentifier Ident where
     identifier = id
@@ -35,14 +25,14 @@ instance HasIdentifier Field where
     identifier = fieldIdent
 
 instance HasIdentifier Open where
-    identifier = openIdent
+    identifier = openId.identifier
 
 instance HasIdentifier AST where
     identifier = to get
       where
         get :: AST -> Ident
-        get (AstModule i _)    = i
-        get (AstSignature i _) = i
+        get (AstModule i _)    = i ^. identifier
+        get (AstSignature i _) = i ^. identifier
         get (AstTypeclass i _) = i
         get (AstDecl d)        = d ^. identifier
         get (AstOpen o)        = o ^. identifier

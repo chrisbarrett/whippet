@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings  #-}
 module Language.Whippet.Frontend.AST.Types where
 
 import           Control.Lens.Plated
 import           Data.Data
 import           Data.Data.Lens      (uniplate)
 import qualified Data.List           as List
+import           Data.List.NonEmpty  (NonEmpty)
+import qualified Data.List.NonEmpty  as NonEmpty
 import           Data.Monoid
 import           Data.Scientific     (Scientific)
 import           Data.Text           (Text)
@@ -12,15 +15,15 @@ import qualified Data.Text           as Text
 import qualified Text.Trifecta       as Trifecta
 
 data AST
-    = AstModule    Ident [AST]
-    | AstSignature Ident [Decl]
+    = AstModule    ModuleId [AST]
+    | AstSignature ModuleId [Decl]
     | AstDecl      Decl
     | AstTypeclass Ident [Decl]
     | AstOpen      Open
     deriving (Eq, Ord, Show)
 
 data Open = Open {
-      _openIdent  :: Ident
+      _openId     :: ModuleId
     , _openAs     :: Maybe Ident
     , _openHiding :: Maybe [Ident]
     }
@@ -111,3 +114,6 @@ data Ctor = Ctor {
     , _ctorParams :: [Type]
     }
     deriving (Eq, Ord, Show)
+
+data ModuleId = ModuleId (NonEmpty Ident)
+    deriving (Eq, Ord, Show, Data)
