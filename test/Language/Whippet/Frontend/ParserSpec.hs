@@ -1024,7 +1024,7 @@ spec = do
 
             modId :: ParsedAst -> [Ident]
             modId ast =
-                ast ^. _Right._AstOpen._Open._1._ModuleId.to NonEmpty.toList
+                ast ^. _Right._AstOpen._Open._1._QualId.to NonEmpty.toList
 
         describe "simple open" $ do
             let result = parseAst "open M"
@@ -1079,7 +1079,7 @@ spec = do
 
             modId :: Either Doc Expr -> [Ident]
             modId ast =
-                ast ^. _Right._EOpen._1._Open._1._ModuleId.to NonEmpty.toList
+                ast ^. _Right._EOpen._1._Open._1._QualId.to NonEmpty.toList
 
             hidden :: Either Doc Expr -> [Ident]
             hidden ast =

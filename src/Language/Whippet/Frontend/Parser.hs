@@ -43,7 +43,7 @@ astOpen =
 parseOpen :: Parser Open
 parseOpen = do
     reserved "open"
-    i <- moduleId
+    i <- qualifiedModule
     a <- optional (reserved "as" *> moduleName)
     h <- optional (reserved "hiding" *> parens (optional comma *> ident `sepBy` comma))
     pure (Open i a h)
@@ -54,7 +54,7 @@ astSignature =
   where
     parser = do
         reserved "signature"
-        AstSignature <$> moduleId <*> braces (many declaration)
+        AstSignature <$> qualifiedModule <*> braces (many declaration)
 
 astModule :: Parser AST
 astModule =
@@ -62,7 +62,7 @@ astModule =
   where
     parser = do
         reserved "module"
-        AstModule <$> moduleId <*> braces (many ast)
+        AstModule <$> qualifiedModule <*> braces (many ast)
 
 astTypeclass :: Parser AST
 astTypeclass =
@@ -411,11 +411,11 @@ typeclassName :: Parser Ident
 typeclassName = moduleName
     <?> "typeclass name"
 
-moduleId :: Parser ModuleId
-moduleId =
+qualifiedModule :: Parser QualId
+qualifiedModule =
     parser <?> "module ID"
   where
-    parser = ModuleId . NonEmpty.fromList <$> moduleName `sepBy1` dot
+    parser = QualId . NonEmpty.fromList <$> moduleName `sepBy1` dot
 
 moduleName :: Parser Ident
 moduleName = do

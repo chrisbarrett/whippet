@@ -15,15 +15,15 @@ import qualified Data.Text           as Text
 import qualified Text.Trifecta       as Trifecta
 
 data AST
-    = AstModule    ModuleId [AST]
-    | AstSignature ModuleId [Decl]
+    = AstModule    QualId [AST]
+    | AstSignature QualId [Decl]
     | AstDecl      Decl
     | AstTypeclass Ident [Decl]
     | AstOpen      Open
     deriving (Eq, Ord, Show)
 
 data Open = Open {
-      _openId     :: ModuleId
+      _openId     :: QualId
     , _openAs     :: Maybe Ident
     , _openHiding :: Maybe [Ident]
     }
@@ -115,5 +115,5 @@ data Ctor = Ctor {
     }
     deriving (Eq, Ord, Show)
 
-data ModuleId = ModuleId (NonEmpty Ident)
+data QualId = QualId (NonEmpty Ident)
     deriving (Eq, Ord, Show, Data)

@@ -44,8 +44,8 @@ makePrisms ''Lit
 makeLenses ''Open
 makePrisms ''Open
 
-makeLenses ''ModuleId
-makePrisms ''ModuleId
+makeLenses ''QualId
+makePrisms ''QualId
 
 text :: Lens' Ident Text
 text = identLabel

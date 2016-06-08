@@ -9,8 +9,8 @@ import           Language.Whippet.Frontend.AST.Types
 class HasIdentifier a where
     identifier :: Getter a Ident
 
-instance HasIdentifier ModuleId where
-    identifier = _ModuleId.to NonEmpty.last
+instance HasIdentifier QualId where
+    identifier = _QualId.to NonEmpty.last
 
 instance HasIdentifier Ident where
     identifier = id
