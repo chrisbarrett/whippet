@@ -141,7 +141,7 @@ typeRef =
     buildExpressionParser operators tyTerm
   where
     operators = [ [Infix (pure TyApp) AssocLeft]
-                , [Infix (rarrow *> pure TyFun) AssocRight]
+                , [Infix (rarrow *> pure TyArrow) AssocRight]
                 ]
 
     tyTerm =
@@ -162,7 +162,7 @@ nominalType :: Parser Type
 nominalType =
     parser <?> "type name"
   where
-    parser = TyNominal <$> typeName
+    parser = TyNominal <$> qualifiedType
 
 recordFields :: Parser [Field]
 recordFields = braces (optional comma *> field `sepBy1` comma)
@@ -403,10 +403,6 @@ ctorName =
         (s :~ span) <- spanned (Trifecta.ident style)
         pure (Ident span s)
 
-typeName :: Parser Ident
-typeName = ctorName
-    <?> "type name"
-
 typeclassName :: Parser Ident
 typeclassName = moduleName
     <?> "typeclass name"
@@ -416,6 +412,16 @@ qualifiedModule =
     parser <?> "module ID"
   where
     parser = QualId . NonEmpty.fromList <$> moduleName `sepBy1` dot
+
+qualifiedType :: Parser QualId
+qualifiedType =
+    parser <?> "type ID"
+  where
+    parser = QualId . NonEmpty.fromList <$> typeName `sepBy1` dot
+
+typeName :: Parser Ident
+typeName = ctorName
+    <?> "type name"
 
 moduleName :: Parser Ident
 moduleName = do

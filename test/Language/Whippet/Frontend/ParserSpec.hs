@@ -8,7 +8,7 @@ import           Control.Lens
 import           Control.Lens.Extras
 import           Control.Monad                           (when)
 import qualified Data.ByteString.Internal                as BS
-import           Data.List.NonEmpty                      (NonEmpty)
+import qualified Data.List                               as List
 import qualified Data.List.NonEmpty                      as NonEmpty
 import           Data.Monoid                             ((<>))
 import           Data.String                             (fromString)
@@ -60,7 +60,7 @@ fieldToText Field {..} =
 typeToText :: Type -> Text
 
 typeToText (TyNominal i) =
-    _identLabel i
+    _identLabel (i ^. identifier)
 
 typeToText (TyVar i) =
     _identLabel i
@@ -71,7 +71,7 @@ typeToText (TyApp x y) =
 typeToText (TyStructural fs) =
     "{" <> Text.intercalate ", " (map fieldToText fs) <> "}"
 
-typeToText (TyFun a b) =
+typeToText (TyArrow a b) =
     "(" <> typeToText a <> " -> " <> typeToText b <> ")"
 
 emptySpan :: Trifecta.Span
@@ -81,7 +81,7 @@ ident :: Text -> Ident
 ident = Ident emptySpan
 
 nominalType :: Text -> Type
-nominalType = TyNominal . ident
+nominalType = TyNominal . QualId . pure . ident
 
 tyVar :: Text -> Type
 tyVar = TyVar . ident
@@ -282,11 +282,15 @@ spec = do
                        .to typeIdentifiers._Just.each
 
             typeIdentifiers :: Type -> Maybe [Ident]
-            typeIdentifiers (TyNominal i)   = Just [i]
             typeIdentifiers (TyVar i)       = Just [i]
             typeIdentifiers TyStructural {} = Nothing
             typeIdentifiers (TyApp x y)     = concat <$> sequence [typeIdentifiers x, typeIdentifiers y]
-            typeIdentifiers (TyFun a b) = do
+
+            typeIdentifiers (TyNominal (QualId q)) =
+                let parts = NonEmpty.toList q ^.. traverse.text
+                in Just [ident (Text.intercalate "." parts)]
+
+            typeIdentifiers (TyArrow a b) = do
                 as <- typeIdentifiers a
                 bs <- typeIdentifiers b
                 pure (as <> bs)

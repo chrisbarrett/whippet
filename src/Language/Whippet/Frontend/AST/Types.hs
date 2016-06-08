@@ -89,11 +89,11 @@ data Field = Field {
     deriving (Eq, Ord, Show, Data)
 
 data Type
-    = TyNominal    Ident
+    = TyNominal    QualId
     | TyVar        Ident
     | TyStructural [Field]
     | TyApp        Type Type
-    | TyFun        Type Type
+    | TyArrow        Type Type
     deriving (Eq, Ord, Show, Data)
 
 instance Plated Type where
