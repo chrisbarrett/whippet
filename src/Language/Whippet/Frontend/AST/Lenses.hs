@@ -47,5 +47,47 @@ makePrisms ''Open
 makeLenses ''QualId
 makePrisms ''QualId
 
+makeLenses ''FnParam
+makePrisms ''FnParam
+
+makeLenses ''Function
+makePrisms ''Function
+
+makeLenses ''AbsType
+makePrisms ''AbsType
+
+makeLenses ''DataType
+makePrisms ''DataType
+
+makeLenses ''RecordType
+makePrisms ''RecordType
+
+makeLenses ''Typeclass
+makePrisms ''Typeclass
+
+makeLenses ''Instance
+makePrisms ''Instance
+
+makeLenses ''Annotation
+makePrisms ''Annotation
+
+makeLenses ''Let
+makePrisms ''Let
+
+makeLenses ''If
+makePrisms ''If
+
+makeLenses ''Match
+makePrisms ''Match
+
+makeLenses ''Signature
+makePrisms ''Signature
+
+makeLenses ''Module
+makePrisms ''Module
+
+makeLenses ''App
+makePrisms ''App
+
 text :: Lens' Ident Text
 text = identLabel

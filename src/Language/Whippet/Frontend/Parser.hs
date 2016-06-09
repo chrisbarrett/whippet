@@ -16,7 +16,7 @@ import           Language.Whippet.Frontend.AST
 import           Text.Parser.Expression
 import           Text.Parser.LookAhead         (lookAhead)
 import           Text.Parser.Token.Style
-import           Text.Trifecta                 hiding (ident, stringLiteral)
+import           Text.Trifecta                 hiding (ident, stringLit)
 import qualified Text.Trifecta                 as Trifecta
 import qualified Text.Trifecta.Delta           as Trifecta
 
@@ -32,67 +32,58 @@ parseString =
 ast :: Parser AST
 ast = do
     whiteSpace
-    astOpen <|> astModule <|> astSignature <|> astDecl
+    choice [ AstOpen <$> open
+           , AstModule <$> module'
+           , AstSignature <$> signature
+           , AstDecl <$> declaration
+           ]
 
 -- * Top-level
 
-astOpen :: Parser AST
-astOpen =
-    AstOpen <$> parseOpen <?> "open statement"
-
-parseOpen :: Parser Open
-parseOpen = do
+open :: Parser Open
+open = do
     reserved "open"
     i <- qualifiedModule
     a <- optional (reserved "as" *> moduleName)
     h <- optional (reserved "hiding" *> parens (optional comma *> ident `sepBy` comma))
     pure (Open i a h)
 
-astSignature :: Parser AST
-astSignature =
+signature :: Parser Signature
+signature =
     parser <?> "signature"
   where
     parser = do
         reserved "signature"
-        AstSignature <$> qualifiedModule <*> braces (many declaration)
+        i <- qualifiedModule
+        b <- braces (many declaration)
+        pure (Signature i b)
 
-astModule :: Parser AST
-astModule =
+module' :: Parser Module
+module' =
     parser <?> "module"
   where
     parser = do
         reserved "module"
-        AstModule <$> qualifiedModule <*> braces (many ast)
+        Module <$> qualifiedModule <*> braces (many ast)
 
-decTypeclass :: Parser Decl
-decTypeclass =
+typeclass :: Parser Typeclass
+typeclass =
     parser <?> "typeclass"
   where
     parser = do
         reserved "typeclass"
-        DecTypeclass <$> typeclassName <*> braces (many decFun)
+        Typeclass <$> typeclassName <*> braces (many function)
 
-astDecl :: Parser AST
-astDecl = AstDecl <$> declaration
-
-decType :: Parser Decl
-decType =
-    parser <?> "type declaration"
+instance' :: Parser Instance
+instance' =
+    parser <?> "instance"
   where
     parser = do
-        reserved "type"
-        id <- typeName
-        tyArgs <- many typeParameter
-        concreteType id tyArgs <|> abstractType id tyArgs
-
-    concreteType id tyArgs = do
-        equals
-        optional pipe
-        DecDataType id tyArgs <$> constructor `sepBy1` pipe
-
-    abstractType id tyArgs =
-        pure (DecAbsType id tyArgs)
-
+        reserved "instance"
+        c <- qualifiedTypeclass
+        t <- nominalType <|> parens typeRef
+        b <- braces (many function)
+        pure (Instance c t b)
 
 constructor :: Parser Ctor
 constructor =
@@ -108,21 +99,49 @@ declaration :: Parser Decl
 declaration =
     parser <?> "declaration"
   where
-    parser = decFun <|> decRecord <|> decType <|> decTypeclass
+    parser =
+        choice [ DecFun <$> function
+               , DecRecordType <$> recordType
+               , DecTypeclass <$> typeclass
+               , DecInstance <$> instance'
+               , decType
+               ]
 
-decFun :: Parser Decl
-decFun =
+    -- Concrete and abstract types share the same prefix, delay branching in the
+    -- parser to improve error messages.
+    decType :: Parser Decl
+    decType =
+        parser <?> "type declaration"
+      where
+        parser = do
+            reserved "type"
+            id <- typeName
+            tyArgs <- many typeParameter
+            concreteType id tyArgs <|> abstractType id tyArgs
+
+        concreteType id tyArgs = do
+            equals
+            optional pipe
+            cs <- constructor `sepBy1` pipe
+            pure (DecDataType (DataType id tyArgs cs))
+
+        abstractType id tyArgs =
+            pure (DecAbsType (AbsType id tyArgs))
+
+
+function :: Parser Function
+function =
     parser <?> "let declaration"
   where
     parser = do
         reserved "let"
         i <- ident
-        colon
+        colon <?> "type annotation"
         t <- typeRef
-        pure (DecFun i t Nothing)
+        pure (Function i Nothing (Just t) Nothing)
 
-decRecord :: Parser Decl
-decRecord =
+recordType :: Parser RecordType
+recordType =
     parser <?> "record declaration"
   where
     parser = do
@@ -131,7 +150,7 @@ decRecord =
         ts <- many typeParameter
         equals
         fs <- recordFields
-        pure (DecRecordType i ts fs)
+        pure (RecordType i ts fs)
 
 
 -- * Types
@@ -170,7 +189,7 @@ recordFields = braces (optional comma *> field `sepBy1` comma)
 field :: Parser Field
 field = do
     i <- ident <?> "field name"
-    colon
+    colon <?> "type annotation"
     t <- typeRef
     pure (Field i t)
 
@@ -187,37 +206,37 @@ expr :: Parser Expr
 expr = do
     e <- buildExpressionParser operators term <?> "expression"
     t <- optional typeAnnotation
-    pure (maybe e (EAnnotation e) t)
+    pure (maybe e (EAnnotation . Annotation e) t)
 
   where
-    operators = [[Infix (pure EApp) AssocLeft]]
-    term =  fn
-        <|> ifThenElse
-        <|> openExpr
-        <|> stringLiteral
-        <|> char
-        <|> listLiteral
-        <|> recordLiteral
-        <|> match
-        <|> let'
-        <|> variable
-        <|> hole
-        <|> numberLiteral
+    operators = [[Infix (pure (\x y -> EApp (App x y))) AssocLeft]]
+    term =
+        choice [ fnLit
+               , EIf <$> ifThenElse
+               , openExpr
+               , ELit <$> stringLit
+               , ELit <$> char
+               , ELit <$> listLiteral
+               , ELit <$> recordLiteral
+               , EMatch <$> match
+               , ELet <$> let'
+               , EVar <$> ident
+               , hole
+               , ELit <$> numberLit
+               ]
 
-    variable = EVar <$> ident
-    char = ELit . LitChar <$> charLiteral
+    char = LitChar <$> charLiteral
 
-openExpr :: Parser Expr
-openExpr =
-    parser <?> "open expression"
-  where
-    parser = do
-        o <- parseOpen
-        reserved "in"
-        b <- expr
-        pure (EOpen o b)
+    openExpr =
+        parser <?> "open expression"
+      where
+        parser = do
+            o <- open
+            reserved "in"
+            b <- expr
+            pure (EOpen o b)
 
-let' :: Parser Expr
+let' :: Parser Let
 let' =
     parser <?> "let expression"
   where
@@ -228,9 +247,9 @@ let' =
         e <- expr
         reserved "in"
         b <- expr
-        pure (ELet d e b)
+        pure (Let d e b)
 
-match :: Parser Expr
+match :: Parser Match
 match =
     parser <?> "match expression"
   where
@@ -239,7 +258,7 @@ match =
         e <- expr
         reserved "with"
         ps <- patterns
-        pure (EMatch e ps)
+        pure (Match e ps)
 
 typeAnnotation :: Parser Type
 typeAnnotation =
@@ -249,17 +268,17 @@ typeAnnotation =
       colon
       parens typeRef <|> nominalType <|> structuralType <|> typeVariable
 
-ifThenElse :: Parser Expr
+ifThenElse :: Parser If
 ifThenElse =
     parser <?> "if expression"
   where
     parser =
-        EIf <$> (reserved "if" *> expr)
-            <*> (reserved "then" *> expr)
-            <*> (reserved "else" *> expr)
+        If <$> (reserved "if" *> expr)
+           <*> (reserved "then" *> expr)
+           <*> (reserved "else" *> expr)
 
-fn :: Parser Expr
-fn =
+fnLit :: Parser Expr
+fnLit =
     parser <?> "fn"
   where
     parser = do
@@ -280,16 +299,16 @@ hole =
       pure (EHole (Ident span s))
 
 
-numberLiteral :: Parser Expr
-numberLiteral =
+numberLit :: Parser Lit
+numberLit =
     parser <?> "number"
   where
     parser = do
         n <- integerOrScientific
-        pure (ELit (either LitInt LitScientific n))
+        pure (either LitInt LitScientific n)
 
-stringLiteral :: Parser Expr
-stringLiteral =
+stringLit :: Parser Lit
+stringLit =
     parser <?> "string"
   where
     parser = do
@@ -297,7 +316,7 @@ stringLiteral =
             content = (escapeSequence <|> anyChar) <?> "string content"
             end     = char '"' <?> "end of string"
         str <- start *> token (content `manyTill` end)
-        pure ((ELit . LitString) (Text.pack str))
+        pure (LitString (Text.pack str))
     escapeSequence = do
         ch <- char '\\' *> anyChar
         case ch of
@@ -311,23 +330,23 @@ stringLiteral =
           'b'  -> pure '\b'
           _    -> fail "Invalid escape sequence"
 
-listLiteral :: Parser Expr
+listLiteral :: Parser Lit
 listLiteral =
     parser <?> "list"
   where
     parser =
-      ELit . LitList <$> brackets (optional comma *> expr `sepEndBy` comma)
+      LitList <$> brackets (optional comma *> expr `sepEndBy` comma)
 
-recordLiteral :: Parser Expr
+recordLiteral :: Parser Lit
 recordLiteral =
     parser <?> "record"
   where
-    parser = ELit . LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
+    parser = LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
 
     field :: Parser (Ident, Expr)
     field = do
         f <- ident
-        colon
+        colon <?> "field value"
         e <- expr
         pure (f, e)
 
@@ -392,7 +411,10 @@ reservedWords = [ "module"
                 , "with"
                 , "open"
                 , "hiding"
+                , "typeclass"
+                , "instance"
                 ]
+
 
 ctorName :: Parser Ident
 ctorName =
@@ -407,12 +429,17 @@ typeclassName :: Parser Ident
 typeclassName = moduleName
     <?> "typeclass name"
 
+qualifiedTypeclass :: Parser QualId
+qualifiedTypeclass = qualifiedModule <?> "typeclass name"
+
 qualifiedModule :: Parser QualId
 qualifiedModule =
     parser <?> "module ID"
   where
     parser = QualId . NonEmpty.fromList <$> moduleName `sepBy1` dot
 
+
+-- TODO: Make this parse:              <module>... '.' <type>
 qualifiedType :: Parser QualId
 qualifiedType =
     parser <?> "type ID"
@@ -431,6 +458,8 @@ moduleName = do
                & styleLetter .~ (alphaNum <|> oneOf "_")
     (s :~ span) <- spanned (Trifecta.ident style)
     pure (Ident span s)
+
+-- TODO: Make var references qualified:              <module>... '.' <ident>
 
 ident :: Parser Ident
 ident = do

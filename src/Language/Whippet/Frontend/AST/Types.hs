@@ -1,9 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE OverloadedStrings  #-}
 module Language.Whippet.Frontend.AST.Types where
 
 import           Control.Lens.Plated
-import           Data.Data
+import           Data.Data           (Data)
 import           Data.Data.Lens      (uniplate)
 import qualified Data.List           as List
 import           Data.List.NonEmpty  (NonEmpty)
@@ -15,11 +14,23 @@ import qualified Data.Text           as Text
 import qualified Text.Trifecta       as Trifecta
 
 data AST
-    = AstModule    QualId [AST]
-    | AstSignature QualId [Decl]
+    = AstModule    Module
+    | AstSignature Signature
     | AstDecl      Decl
     | AstOpen      Open
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
+
+data Module = Module {
+      _moduleId   :: QualId
+    , _moduleBody :: [AST]
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data Signature = Signature {
+      _signatureId   :: QualId
+    , _signatureBody :: [Decl]
+    }
+    deriving (Eq, Ord, Show, Data)
 
 data Open = Open {
       _openId     :: QualId
@@ -54,20 +65,52 @@ data Lit
     deriving (Eq, Ord, Show, Data)
 
 data Expr
-    = EAnnotation Expr Type
-    | EApp Expr Expr
+    = EAnnotation Annotation
+    | EApp App
     | EHole Ident
-    | EIf Expr Expr Expr
+    | EIf If
     | EFn [Pat]
-    | ELet Discriminator Expr Expr
+    | ELet Let
     | ELit Lit
-    | EMatch Expr [Pat]
+    | EMatch Match
     | EVar Ident
     | EOpen Open Expr
     deriving (Eq, Ord, Show, Data)
 
 instance Plated Expr where
     plate = uniplate
+
+data App = App {
+      _appFn  :: Expr
+    , _appArg :: Expr
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data If = If {
+      _ifCondition :: Expr
+    , _ifThen      :: Expr
+    , _ifElse      :: Expr
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data Let = Let {
+      _letDiscriminator :: Discriminator
+    , _letValue         :: Expr
+    , _letBody          :: Expr
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data Match = Match {
+      _matchExpr     :: Expr
+    , _matchPatterns :: [Pat]
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data Annotation = Annotation {
+      _annotationExpr :: Expr
+    , _annotationType :: Type
+    }
+    deriving (Eq, Ord, Show, Data)
 
 data Ident = Ident {
       _identPos   :: Trifecta.Span
@@ -79,7 +122,7 @@ instance Show Ident where
     show = show . _identLabel
 
 instance Eq Ident where
-  x == y = _identLabel x == _identLabel y
+    x == y = _identLabel x == _identLabel y
 
 data Field = Field {
       _fieldIdent :: Ident
@@ -92,28 +135,76 @@ data Type
     | TyVar        Ident
     | TyStructural [Field]
     | TyApp        Type Type
-    | TyArrow        Type Type
+    | TyArrow      Type Type
     deriving (Eq, Ord, Show, Data)
 
 instance Plated Type where
     plate = uniplate
 
 newtype TypeParameter = TypeParameter {_typeParameterIdent :: Ident}
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 data Decl
-    = DecFun        Ident Type (Maybe Expr)
-    | DecAbsType    Ident [TypeParameter]
-    | DecDataType   Ident [TypeParameter] [Ctor]
-    | DecRecordType Ident [TypeParameter] [Field]
-    | DecTypeclass  Ident [Decl]
-    deriving (Eq, Ord, Show)
+    = DecFun        Function
+    | DecAbsType    AbsType
+    | DecDataType   DataType
+    | DecRecordType RecordType
+    | DecTypeclass  Typeclass
+    | DecInstance   Instance
+    deriving (Eq, Ord, Show, Data)
+
+data Typeclass = Typeclass {
+      _typeclassIdent :: Ident
+    , _typeclassDecls :: [Function]
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data Instance = Instance {
+      _instanceIdent  :: QualId
+    , _instanceTarget :: Type
+    , _instanceDecls  :: [Function]
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data Function = Function {
+      _functionIdent  :: Ident
+    , _functionParams :: Maybe [FnParam]
+    , _functionType   :: Maybe Type
+    , _functionBody   :: Maybe Expr
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data AbsType = AbsType {
+      _absTypeIdent  :: Ident
+    , _absTypeParams :: [TypeParameter]
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data DataType = DataType {
+      _dataTypeIdent  :: Ident
+    , _dataTypeParams :: [TypeParameter]
+    , _dataTypeCtors  :: [Ctor]
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data RecordType = RecordType {
+      _recordTypeIdent  :: Ident
+    , _recordTypeParams :: [TypeParameter]
+    , _recordTypeFields :: [Field]
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data FnParam = FnParam {
+      _fnParamIdent :: Ident
+    , _fnParamType  :: Maybe Type
+    }
+    deriving (Eq, Ord, Show, Data)
 
 data Ctor = Ctor {
       _ctorIdent  :: Ident
     , _ctorParams :: [Type]
     }
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 data QualId = QualId (NonEmpty Ident)
     deriving (Eq, Ord, Show, Data)

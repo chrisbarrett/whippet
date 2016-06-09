@@ -1,0 +1,8 @@
+instance TypeclassWithFunctions Int {
+  let foo x = {
+    0
+  }
+  let bar x = {
+    1
+  }
+}
