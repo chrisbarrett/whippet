@@ -189,19 +189,19 @@ spec = do
     describe "parsing typeclass declarations" $ do
         let body :: ParsedAst -> [Decl]
             body ast =
-                ast ^. _Right._AstTypeclass._2
+                ast ^. _Right._AstDecl._DecTypeclass._2
 
             name :: ParsedAst -> [Ident]
             name ast =
-                ast ^.. _Right._AstTypeclass._1
+                ast ^.. _Right._AstDecl._DecTypeclass._1
 
             declarations :: ParsedAst -> [Ident]
             declarations ast =
-                ast ^.. _Right._AstTypeclass._2.traverse.identifier
+                ast ^.. _Right._AstDecl._DecTypeclass._2.traverse.identifier
 
             whenParsesToTypeclass result assertions = do
                 it "parses to a typeclass" $
-                  result `shouldSatisfy` is (_Right._AstTypeclass)
+                  result `shouldSatisfy` is (_Right._AstDecl._DecTypeclass)
                 when (is _Right result) assertions
 
         describe "empty typeclass" $ do

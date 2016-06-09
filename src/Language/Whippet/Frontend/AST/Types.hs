@@ -18,7 +18,6 @@ data AST
     = AstModule    QualId [AST]
     | AstSignature QualId [Decl]
     | AstDecl      Decl
-    | AstTypeclass Ident [Decl]
     | AstOpen      Open
     deriving (Eq, Ord, Show)
 
@@ -107,6 +106,7 @@ data Decl
     | DecAbsType    Ident [TypeParameter]
     | DecDataType   Ident [TypeParameter] [Ctor]
     | DecRecordType Ident [TypeParameter] [Field]
+    | DecTypeclass  Ident [Decl]
     deriving (Eq, Ord, Show)
 
 data Ctor = Ctor {

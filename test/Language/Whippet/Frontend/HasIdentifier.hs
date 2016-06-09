@@ -33,7 +33,6 @@ instance HasIdentifier AST where
         get :: AST -> Ident
         get (AstModule i _)    = i ^. identifier
         get (AstSignature i _) = i ^. identifier
-        get (AstTypeclass i _) = i
         get (AstDecl d)        = d ^. identifier
         get (AstOpen o)        = o ^. identifier
 
@@ -45,3 +44,4 @@ instance HasIdentifier Decl where
         get (DecAbsType i _)      = i
         get (DecDataType i _ _)   = i
         get (DecRecordType i _ _) = i
+        get (DecTypeclass i _)    = i

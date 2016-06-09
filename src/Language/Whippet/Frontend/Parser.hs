@@ -32,7 +32,7 @@ parseString =
 ast :: Parser AST
 ast = do
     whiteSpace
-    astOpen <|> astModule <|> astSignature <|> astDecl <|> astTypeclass
+    astOpen <|> astModule <|> astSignature <|> astDecl
 
 -- * Top-level
 
@@ -64,13 +64,13 @@ astModule =
         reserved "module"
         AstModule <$> qualifiedModule <*> braces (many ast)
 
-astTypeclass :: Parser AST
-astTypeclass =
+decTypeclass :: Parser Decl
+decTypeclass =
     parser <?> "typeclass"
   where
     parser = do
         reserved "typeclass"
-        AstTypeclass <$> typeclassName <*> braces (many decFun)
+        DecTypeclass <$> typeclassName <*> braces (many decFun)
 
 astDecl :: Parser AST
 astDecl = AstDecl <$> declaration
@@ -108,7 +108,7 @@ declaration :: Parser Decl
 declaration =
     parser <?> "declaration"
   where
-    parser = decFun <|> decRecord <|> decType
+    parser = decFun <|> decRecord <|> decType <|> decTypeclass
 
 decFun :: Parser Decl
 decFun =
