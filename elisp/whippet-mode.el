@@ -25,7 +25,7 @@
 
 (defconst whippet-mode-keywords
   '("import" "signature" "module" "type" "record" "typeclass" "instance"
-    "let" "law" "match" "as" "fun" "in"
+    "let" "law" "match" "as" "fn" "in"
     "if" "then" "else"))
 
 (defvar whippet-mode-map
