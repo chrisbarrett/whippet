@@ -19,8 +19,7 @@ main :: IO ()
 main = hspec spec
 
 parseExpr :: BS.ByteString -> Either Doc Expr
-parseExpr =
-    resultToEither . Trifecta.parseByteString (Parser.expr <* Trifecta.eof) mempty
+parseExpr = parseString Parser.expr
 
 parseExprFromFile file = runIO $
     parseFileFromResources (Parser.expr <* Trifecta.eof) file
@@ -57,9 +56,9 @@ spec = do
 
         describe "identifier starting with a number" $ do
             let result = parseExpr "1x"
-            it "should fail to parse"
-                pending
-                -- result `shouldSatisfy` is _Left
+            it "should fail to parse" $
+                const pending $
+                result `shouldSatisfy` is _Left
 
         describe "identifier containing a number" $ do
             let result = parseExpr "x1"
@@ -617,7 +616,7 @@ spec = do
                 ast ^.. _Right._EOpen._2
 
         describe "simple open" $ do
-            let result = parseExpr "open M; 0"
+            let result = parseExpr "open M\n0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -625,7 +624,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open module with path" $ do
-            let result = parseExpr "open M.N; 0"
+            let result = parseExpr "open M.N\n0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M", ident "N"]
@@ -633,7 +632,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open hiding" $ do
-            let result = parseExpr "open M hiding (foo, bar); 0"
+            let result = parseExpr "open M hiding (foo, bar)\n0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -643,7 +642,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open with renaming" $ do
-            let result = parseExpr "open M as X; 0"
+            let result = parseExpr "open M as X\n0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -653,7 +652,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open with renaming and hidden" $ do
-            let result = parseExpr "open M as X hiding (x,y); 0"
+            let result = parseExpr "open M as X hiding (x,y)\n0"
             whenParsesToOpen result $ do
                 it "has the expected identifier" $
                     modId result `shouldBe` [ident "M"]

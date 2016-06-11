@@ -148,6 +148,7 @@ newtype TypeParameter = TypeParameter {_typeParameterIdent :: Ident}
 
 data Decl
     = DecFun        Function
+    | DecFunSig     FunctionSig
     | DecAbsType    AbsType
     | DecDataType   DataType
     | DecRecordType RecordType
@@ -155,9 +156,12 @@ data Decl
     | DecInstance   Instance
     deriving (Eq, Ord, Show, Data)
 
+data FnOrSig = Fn Function | Sig FunctionSig
+    deriving (Eq, Ord, Show, Data)
+
 data Typeclass = Typeclass {
       _typeclassIdent :: Ident
-    , _typeclassDecls :: [Function]
+    , _typeclassDecls :: [FnOrSig]
     }
     deriving (Eq, Ord, Show, Data)
 
@@ -170,9 +174,15 @@ data Instance = Instance {
 
 data Function = Function {
       _functionIdent  :: Ident
-    , _functionParams :: Maybe [FnParam]
+    , _functionParams :: [FnParam]
     , _functionType   :: Maybe Type
-    , _functionBody   :: Maybe Expr
+    , _functionBody   :: Expr
+    }
+    deriving (Eq, Ord, Show, Data)
+
+data FunctionSig = FunctionSig {
+      _functionSigIdent :: Ident
+    , _functionSigType  :: Type
     }
     deriving (Eq, Ord, Show, Data)
 

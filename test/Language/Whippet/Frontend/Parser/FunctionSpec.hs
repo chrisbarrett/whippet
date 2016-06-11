@@ -14,45 +14,27 @@ import           Test.Hspec
 main :: IO ()
 main = hspec spec
 
-fnParams :: ParsedAst -> [FnParam]
-fnParams ast =
-    ast ^. _Right._AstDecl._DecFun.functionParams._Just
-
-param :: Text -> FnParam
-param n = FnParam (ident n) Nothing
-
-param' :: Text -> Type -> FnParam
-param' n = FnParam (ident n) . Just
-
-fnType :: ParsedAst -> [Type]
-fnType ast =
-    ast ^.. _Right._AstDecl._DecFun.functionType._Just
-
-fnType' :: ParsedAst -> Text
-fnType' ast =
-    ast ^. _Right._AstDecl._DecFun.functionType._Just.pprint'
-
-fnName :: ParsedAst -> Text
-fnName ast =
-    ast ^. _Right._AstDecl._DecFun.functionIdent.pprint'
-
-fnBody :: ParsedAst -> [Expr]
-fnBody ast =
-    ast ^.. _Right._AstDecl._DecFun.functionBody._Just
-
-whenParsesToFn result assertions = do
-    it "parses to a function signature" $
-        result `shouldSatisfy` is (_Right._AstDecl._DecFun)
-    when (is _Right result) assertions
-
 spec :: Spec
 spec = do
 
     describe "parsing a function signature" $ do
 
+        let whenParsesToSig result assertions = do
+                it "parses to a function signature" $
+                    result `shouldSatisfy` is (_Right._AstDecl._DecFunSig)
+                when (is _Right result) assertions
+
+            fnType' :: ParsedAst -> Text
+            fnType' ast =
+                ast ^. _Right._AstDecl._DecFunSig.functionSigType.pprint'
+
+            fnName :: ParsedAst -> Text
+            fnName ast =
+                ast ^. _Right._AstDecl._DecFunSig.functionSigIdent.pprint'
+
         describe "unary type signature" $ do
             result <- parseFile "UnitFunSig.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "unit"
                 it "has the expected type parameters" $
@@ -60,7 +42,7 @@ spec = do
 
         describe "binary type signature" $ do
             result <- parseFile "IdentityFunSig.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "identity"
                 it "has the expected type parameters" $
@@ -68,7 +50,7 @@ spec = do
 
         describe "ternary type signature" $ do
             result <- parseFile "ConstFunSig.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "const"
                 it "has the expected type parameters" $
@@ -76,7 +58,7 @@ spec = do
 
         describe "type signature with paranthesised identifier" $ do
             result <- parseFile "FunctionTyParens.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "const"
                 it "has the expected type parameters" $
@@ -84,7 +66,7 @@ spec = do
 
         describe "type signature with type constructor parameter" $ do
             result <- parseFile "FunctionTyCtor.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "getOpt"
                 it "has the expected type parameters" $
@@ -92,7 +74,7 @@ spec = do
 
         describe "type signature with function type parameter" $ do
             result <- parseFile "ListMapFun.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "map"
                 it "has the expected type parameters" $
@@ -100,7 +82,7 @@ spec = do
 
         describe "type signature with structural type as input" $ do
             result <- parseFile "StructuralTypeParameterInput.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "first"
                 it "has the expected type parameters" $
@@ -108,7 +90,7 @@ spec = do
 
         describe "type signature with structural type as output" $ do
             result <- parseFile "StructuralTypeParameterOutput.whippet"
-            whenParsesToFn result $ do
+            whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "box"
                 it "has the expected type parameters" $
@@ -116,6 +98,37 @@ spec = do
 
 
     describe "function definitions" $ do
+
+        let whenParsesToFn result assertions = do
+                it "parses to a function signature" $
+                    result `shouldSatisfy` is (_Right._AstDecl._DecFun)
+                when (is _Right result) assertions
+
+            fnParams :: ParsedAst -> [FnParam]
+            fnParams ast =
+                ast ^. _Right._AstDecl._DecFun.functionParams
+
+            param :: Text -> FnParam
+            param n = FnParam (ident n) Nothing
+
+            param' :: Text -> Type -> FnParam
+            param' n = FnParam (ident n) . Just
+
+            fnType :: ParsedAst -> [Type]
+            fnType ast =
+                ast ^.. _Right._AstDecl._DecFun.functionType._Just
+
+            fnType' :: ParsedAst -> Text
+            fnType' ast =
+                ast ^. _Right._AstDecl._DecFun.functionType._Just.pprint'
+
+            fnName :: ParsedAst -> Text
+            fnName ast =
+                ast ^. _Right._AstDecl._DecFun.functionIdent.pprint'
+
+            fnBody :: ParsedAst -> [Expr]
+            fnBody ast =
+                ast ^.. _Right._AstDecl._DecFun.functionBody
 
         describe "simple function" $ do
             result <- parseFile "IdentityFun.whippet"

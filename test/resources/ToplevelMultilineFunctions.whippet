@@ -1,0 +1,9 @@
+let get d = fn {
+  | Some x -> x
+  | None   -> d
+}
+
+let some? = fn {
+  | Some _ -> True
+  | None   -> False
+}

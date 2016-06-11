@@ -14,11 +14,21 @@ import           Language.Whippet.Frontend.PPrint
 import           Test.Hspec
 import qualified Text.Trifecta                               as Trifecta
 
+parseAst :: BS.ByteString -> ParsedAst
+parseAst = parseString Parser.ast
+
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
 spec = do
+
+    describe "parsing comments" $ do
+        let result = Parser.parseString "// foo"
+        it "parses successfully" $
+            result `shouldSatisfy` is Trifecta._Success
+        it "parses to an empty AST" $
+            result `shouldSatisfy` is (Trifecta._Success._Empty)
 
     describe "parsing modules" $ do
         let body :: ParsedAst -> [AST]
@@ -53,14 +63,6 @@ spec = do
                       .traverse
                       .to getIdent
                       ._Just
-              where
-                getIdent :: Decl -> Maybe Text
-                getIdent (DecFun d)        = Just (d ^. functionIdent.pprint')
-                getIdent (DecAbsType d)    = Just (d ^. absTypeIdent.pprint')
-                getIdent (DecDataType d)   = Just (d ^. dataTypeIdent.pprint')
-                getIdent (DecRecordType d) = Just (d ^. recordTypeIdent.pprint')
-                getIdent (DecTypeclass d)  = Just (d ^. typeclassIdent.pprint')
-                getIdent (DecInstance d)   = Just (d ^. instanceIdent.pprint')
 
             identifier :: ParsedAst -> Text
             identifier ast =
@@ -72,9 +74,8 @@ spec = do
                       ._AstSignature
                       .signatureBody
                       .traverse
-                      ._DecFun
-                      .functionType
-                      ._Just
+                      ._DecFunSig
+                      .functionSigType
                       .pprint'
 
             decls :: ParsedAst -> [Decl]
@@ -140,11 +141,7 @@ spec = do
 
     describe "open statement" $ do
 
-        let parseAst :: BS.ByteString -> ParsedAst
-            parseAst =
-                resultToEither . Trifecta.parseByteString (Parser.ast <* Trifecta.eof) mempty
-
-            whenParsesToOpen result assertions = do
+        let whenParsesToOpen result assertions = do
                 it "parses to an 'open' statement" $
                     result `shouldSatisfy` is (_Right._AstOpen)
                 when (is _Right result) assertions
@@ -204,3 +201,88 @@ spec = do
                     rename result `shouldBe` [ident "X"]
                 it "has the expected hidden identifiers" $
                     hidden result `shouldBe` [ident "x", ident "y"]
+
+    describe "realistic examples" $ do
+
+        describe "multiple toplevel functions" $ do
+
+            describe "single-line functions" $ do
+                result <- parseFile "ToplevelSinglelineFunctions.whippet"
+                it "should parse successfully" $
+                    result `shouldSatisfy` is _Right
+
+            describe "functions using indentation-sensitive layout" $ do
+                result <- parseFile "ToplevelSinglelineFunctionsBlockBodies.whippet"
+                it "should parse successfully" $
+                    result `shouldSatisfy` is _Right
+
+            describe "multi-line functions" $ do
+                result <- parseFile "ToplevelMultilineFunctions.whippet"
+                it "should parse successfully" $
+                    result `shouldSatisfy` is _Right
+
+        describe "populated module" $ do
+            result <- parseFile "PopulatedModule.whippet"
+            it "should parse successfully" $
+                const pending $
+                result `shouldSatisfy` is _Right
+
+        describe "multiple toplevel modules" $ do
+
+            describe "all empty" $ do
+                result <- parseFile "MultipleEmptyModules.whippet"
+                it "should parse successfully" $
+                    result `shouldSatisfy` is _Right
+
+            describe "some empty" $ do
+                result <- parseFile "MixedPopulatedModules.whippet"
+                it "should parse successfully" $
+                    const pending $
+                    result `shouldSatisfy` is _Right
+
+        describe "multiple toplevel types" $ do
+            result <- parseFile "TwoTypes.whippet"
+            it "should parse successfully" $
+                const pending $
+                result `shouldSatisfy` is _Right
+
+        describe "options" $ do
+            result <- parseFile "RealisticOption.whippet"
+            it "should parse successfully" $
+                const pending $
+                result `shouldSatisfy` is _Right
+
+        describe "indentation sensitivity" $ do
+
+            let function :: Text -> [Text] -> Expr -> AST
+                function i ps b =
+                    AstDecl (DecFun (Function (ident i) (map param ps) Nothing
+                                        b))
+                  where
+                    param n = FnParam (ident n) Nothing
+
+                let' :: Text -> Expr -> Expr -> Expr
+                let' i d b =
+                    ELet (Let (DVar (ident i))
+                              d
+                           b)
+
+            describe "example 1" $ do
+                let result = Parser.parseString $
+                             unlines [ "let foo x y = {"
+                                     , "  let x = x;"
+                                     , "  let y = y;"
+                                     , "  foo"
+                                     , "}"
+                                     ]
+
+                    expected = function "foo" ["x", "y"] $
+                                 let' "x" (var "x") $
+                                 let' "y" (var "y") $
+                                 var "foo"
+
+                it "should parse successfully" $
+                    result `shouldSatisfy` is Trifecta._Success
+                when (is Trifecta._Success result) $ do
+                    it "should parse to the expected AST" $
+                        result ^. Trifecta._Success `shouldBe` [expected]

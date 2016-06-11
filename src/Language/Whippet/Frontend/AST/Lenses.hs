@@ -53,6 +53,9 @@ makePrisms ''FnParam
 makeLenses ''Function
 makePrisms ''Function
 
+makeLenses ''FunctionSig
+makePrisms ''FunctionSig
+
 makeLenses ''AbsType
 makePrisms ''AbsType
 
@@ -88,6 +91,9 @@ makePrisms ''Module
 
 makeLenses ''App
 makePrisms ''App
+
+makeLenses ''FnOrSig
+makePrisms ''FnOrSig
 
 text :: Lens' Ident Text
 text = identLabel

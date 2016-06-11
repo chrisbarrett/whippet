@@ -19,7 +19,7 @@ spec :: Spec
 spec = do
 
     describe "parsing typeclass declarations" $ do
-        let body :: ParsedAst -> [Function]
+        let body :: ParsedAst -> [FnOrSig]
             body ast =
                 ast ^. _Right._AstDecl._DecTypeclass.typeclassDecls
 
@@ -34,8 +34,12 @@ spec = do
                       ._DecTypeclass
                       .typeclassDecls
                       .traverse
-                      .functionIdent
-                      .pprint'
+                      .to (getIdent.toDecl)
+                      ._Just
+
+            toDecl :: FnOrSig -> Decl
+            toDecl (Fn f)  = DecFun f
+            toDecl (Sig f) = DecFunSig f
 
             whenParsesToTypeclass result assertions = do
                 it "parses to a typeclass" $
