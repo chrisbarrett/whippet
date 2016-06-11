@@ -76,6 +76,18 @@
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.whippet\\'" . whippet-mode))
 
+(with-eval-after-load 'flycheck
+  (flycheck-define-checker whippet
+    "A syntax checker for whippet source files."
+    :command ("whippet" "--check-only" "--plain" source)
+    :error-patterns
+    ((error line-start (file-name) ":" line ":" column ": error: " (message) line-end)
+     (warning line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
+     (info line-start (file-name) ":" line ":" column ": note: " (message) line-end))
+    :modes whippet-mode)
+
+  (add-to-list 'flycheck-checkers 'whippet))
+
 (provide 'whippet-mode)
 
 ;;; whippet-mode.el ends here
