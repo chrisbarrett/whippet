@@ -44,3 +44,18 @@ emptySpan = Trifecta.Span mempty mempty mempty
 
 ident :: Text -> Ident
 ident = Ident emptySpan
+
+nominalType :: Text -> Type
+nominalType = TyNominal . QualId . pure . ident
+
+tyVar :: Text -> Type
+tyVar = TyVar . ident
+
+int :: Integer -> Expr
+int = ELit . LitInt
+
+var :: Text -> Expr
+var = EVar . Ident emptySpan
+
+eapp :: Expr -> Expr -> Expr
+eapp x y = EApp (App x y)

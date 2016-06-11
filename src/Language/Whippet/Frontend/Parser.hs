@@ -22,16 +22,18 @@ import qualified Text.Trifecta.Delta           as Trifecta
 
 -- * Parser definitions
 
-parseFile :: MonadIO m => FilePath -> m (Result AST)
-parseFile = parseFromFileEx ast
+parseFile :: MonadIO m => FilePath -> m (Result TopLevel)
+parseFile = parseFromFileEx topLevel
 
-parseString :: String -> Result AST
+parseString :: String -> Result TopLevel
 parseString =
-    Trifecta.parseByteString ast mempty . fromString
+    Trifecta.parseByteString topLevel mempty . fromString
+
+topLevel :: Parser TopLevel
+topLevel = whiteSpace *> many ast <* eof
 
 ast :: Parser AST
-ast = do
-    whiteSpace
+ast =
     choice [ AstOpen <$> open
            , AstModule <$> module'
            , AstSignature <$> signature
@@ -136,9 +138,35 @@ function =
     parser = do
         reserved "let"
         i <- ident
+        ps <- optional (some fnParam <?> "parameters")
+        maybe (fnSig i) (fnImpl i) ps
+
+    fnParam :: Parser FnParam
+    fnParam =
+        parens paramWithTy <|> paramIdent
+      where
+        paramWithTy = do
+            i <- ident
+            colon
+            t <- typeRef
+            pure (FnParam i (Just t))
+
+        paramIdent =
+            FnParam <$> ident <*> pure Nothing
+
+    fnSig :: Ident -> Parser Function
+    fnSig i = do
         colon <?> "type annotation"
         t <- typeRef
         pure (Function i Nothing (Just t) Nothing)
+
+    fnImpl :: Ident -> [FnParam] -> Parser Function
+    fnImpl i ps = do
+        t <- optional (colon *> typeRef) <?> "type annotation"
+        equals
+        e <- expr
+        pure (Function i (Just ps) t (Just e))
+
 
 recordType :: Parser RecordType
 recordType =
@@ -232,7 +260,7 @@ expr = do
       where
         parser = do
             o <- open
-            reserved "in"
+            semi
             b <- expr
             pure (EOpen o b)
 
@@ -245,7 +273,7 @@ let' =
         d <- discriminator
         equals
         e <- expr
-        reserved "in"
+        semi
         b <- expr
         pure (Let d e b)
 
@@ -402,7 +430,6 @@ reservedWords = [ "module"
                 , "let"
                 , "if"
                 , "let"
-                , "in"
                 , "then"
                 , "else"
                 , "fn"

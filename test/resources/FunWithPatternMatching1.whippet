@@ -1,0 +1,4 @@
+let get d o = match o with {
+  | Some o -> o
+  | None -> d
+}

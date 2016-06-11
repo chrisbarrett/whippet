@@ -18,18 +18,6 @@ import qualified Text.Trifecta                               as Trifecta
 main :: IO ()
 main = hspec spec
 
-nominalType :: Text -> Type
-nominalType = TyNominal . QualId . pure . ident
-
-int :: Integer -> Expr
-int = ELit . LitInt
-
-var :: Text -> Expr
-var = EVar . Ident emptySpan
-
-eapp :: Expr -> Expr -> Expr
-eapp x y = EApp (App x y)
-
 parseExpr :: BS.ByteString -> Either Doc Expr
 parseExpr =
     resultToEither . Trifecta.parseByteString (Parser.expr <* Trifecta.eof) mempty
@@ -545,7 +533,7 @@ spec = do
                 it "has the expected argument" $
                     argument result `shouldBe` [var "y"]
 
-    describe "let...in" $ do
+    describe "let bindings" $ do
 
         let whenParsesToLet result assertions = do
                 it "parses to a let expression" $
@@ -565,7 +553,7 @@ spec = do
                 expr ^.. _Right._ELet.letBody
 
         describe "named binding" $ do
-            let result = parseExpr "let x = 0 in 1"
+            let result = parseExpr "let x = 0; 1"
             whenParsesToLet result $ do
                 it "has the expected binder" $
                     discriminator result `shouldBe` [dVar "x"]
@@ -575,7 +563,7 @@ spec = do
                     body result `shouldBe` [int 1]
 
         describe "named binding with type annotation" $ do
-            let result = parseExpr "let x: Int = 0 in 1"
+            let result = parseExpr "let x: Int = 0; 1"
             whenParsesToLet result $ do
                 it "has the expected binder" $
                     discriminator result `shouldBe` [dVar "x" `DAnn` nominalType "Int"]
@@ -585,7 +573,7 @@ spec = do
                     body result `shouldBe` [int 1]
 
         describe "'as' pattern" $ do
-            let result = parseExpr "let b as True = x in e"
+            let result = parseExpr "let b as True = x; e"
             whenParsesToLet result $ do
                 it "has the expected binder" $
                     discriminator result `shouldBe` [dVar "b" `DAs` dCtor "True"]
@@ -595,7 +583,7 @@ spec = do
                     body result `shouldBe` [var "e"]
 
         describe "structural type" $ do
-            let result = parseExpr "let {fst, snd} = p in snd"
+            let result = parseExpr "let {fst, snd} = p; snd"
             whenParsesToLet result $ do
                 it "has the expected binder" $
                     discriminator result `shouldBe` [DRec [dVar "fst", dVar "snd"]]
@@ -605,7 +593,7 @@ spec = do
                     body result `shouldBe` [var "snd"]
 
 
-    describe "open...in expression" $ do
+    describe "open expression" $ do
 
         let whenParsesToOpen result assertions = do
                 it "parses to an 'open' expression" $
@@ -629,7 +617,7 @@ spec = do
                 ast ^.. _Right._EOpen._2
 
         describe "simple open" $ do
-            let result = parseExpr "open M in 0"
+            let result = parseExpr "open M; 0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -637,7 +625,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open module with path" $ do
-            let result = parseExpr "open M.N in 0"
+            let result = parseExpr "open M.N; 0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M", ident "N"]
@@ -645,7 +633,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open hiding" $ do
-            let result = parseExpr "open M hiding (foo, bar) in 0"
+            let result = parseExpr "open M hiding (foo, bar); 0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -655,7 +643,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open with renaming" $ do
-            let result = parseExpr "open M as X in 0"
+            let result = parseExpr "open M as X; 0"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -665,7 +653,7 @@ spec = do
                     body result `shouldBe` [int 0]
 
         describe "open with renaming and hidden" $ do
-            let result = parseExpr "open M as X hiding (x,y) in 0"
+            let result = parseExpr "open M as X hiding (x,y); 0"
             whenParsesToOpen result $ do
                 it "has the expected identifier" $
                     modId result `shouldBe` [ident "M"]

@@ -13,6 +13,8 @@ import           Data.Text           (Text)
 import qualified Data.Text           as Text
 import qualified Text.Trifecta       as Trifecta
 
+type TopLevel = [AST]
+
 data AST
     = AstModule    Module
     | AstSignature Signature
