@@ -18,7 +18,7 @@ main = do
 
     let printDoc h d =
             let useColour = if optNoColour then PP.plain d else d
-                settings = PP.renderPretty 1 10000 useColour
+                settings = PP.renderPretty 1 100 useColour
             in PP.displayIO h settings
 
     ast <- Parser.parseFile optFile
