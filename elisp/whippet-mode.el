@@ -81,9 +81,13 @@
     "A syntax checker for whippet source files."
     :command ("whippet" "--check-only" "--plain" source)
     :error-patterns
-    ((error line-start (file-name) ":" line ":" column ": error: " (message) line-end)
-     (warning line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
-     (info line-start (file-name) ":" line ":" column ": note: " (message) line-end))
+    ((error line-start (file-name) ":" line ":" column ": error: "
+            (message
+             (one-or-more not-newline)
+             (zero-or-more "\n"
+                           (one-or-more " ")
+                           (one-or-more not-newline)))
+            line-end))
     :modes whippet-mode)
 
   (add-to-list 'flycheck-checkers 'whippet))
