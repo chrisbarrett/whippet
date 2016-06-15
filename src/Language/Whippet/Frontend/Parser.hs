@@ -19,7 +19,7 @@ import qualified Text.Parser.LookAhead         as Parser
 import qualified Text.Parser.Token.Highlight   as Parser
 import qualified Text.Parser.Token.Style       as Parser
 import           Text.Trifecta                 hiding (braces, brackets, comma,
-                                                ident, parens, stringLit)
+                                                eof, ident, parens, stringLit)
 import qualified Text.Trifecta                 as Trifecta
 import qualified Text.Trifecta.Delta           as Trifecta
 
@@ -601,3 +601,6 @@ brackets =
   where
     start = op "[" <?> "open square bracket"
     end = op "]" <?> "closing bracket"
+
+eof :: P ()
+eof = notFollowedBy anyChar
