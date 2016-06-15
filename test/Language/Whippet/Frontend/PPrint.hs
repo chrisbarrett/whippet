@@ -42,3 +42,8 @@ instance PPrint Type where
 
     pprint (TyArrow a b) =
         "(" <> pprint a <> " -> " <> pprint b <> ")"
+
+    pprint (TyForall ps t) =
+        "(forall " <> pfmt ps <> ". " <> pprint t <> ")"
+        where
+          pfmt = Text.unwords . fmap pprint . NonEmpty.toList

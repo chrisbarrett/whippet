@@ -260,9 +260,21 @@ typeRef =
     operators = [ [Parser.Infix (pure TyApp) Parser.AssocLeft]
                 , [Parser.Infix (rarrow *> pure TyArrow) Parser.AssocRight]
                 ]
-
     tyTerm =
-        parens typeRef <|> nominalType <|> structuralType <|> typeVariable
+        choice [ parens typeRef
+               , nominalType
+               , structuralType
+               , typeVariable
+               , forallType
+               ]
+
+forallType :: P Type
+forallType = do
+    reserved "forall"
+    binders <- NonEmpty.fromList <$> some typeParameter
+    dot
+    t <- typeRef
+    pure (TyForall binders t)
 
 typeVariable :: P Type
 typeVariable =
@@ -288,7 +300,10 @@ recordFields =
         pure (Field i t)
 
 typeParameter :: P TypeParameter
-typeParameter = TypeParameter <$> ident
+typeParameter = do
+    let style = identStyle & styleStart .~ lower
+    (s :~ span) <- spanned (Trifecta.ident style)
+    pure (TypeParameter (Ident span s))
 
 
 -- * Expressions
@@ -488,6 +503,7 @@ reservedWords = [ "module"
                 , "hiding"
                 , "typeclass"
                 , "instance"
+                , "forall"
                 , "="
                 , "->"
                 , "=>"

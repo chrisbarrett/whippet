@@ -138,6 +138,7 @@ data Type
     | TyStructural [Field]
     | TyApp        Type Type
     | TyArrow      Type Type
+    | TyForall     (NonEmpty TypeParameter) Type
     deriving (Eq, Ord, Show, Data)
 
 instance Plated Type where

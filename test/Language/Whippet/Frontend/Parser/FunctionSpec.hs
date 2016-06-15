@@ -96,6 +96,12 @@ spec = do
                 it "has the expected type parameters" $
                     fnType' result `shouldBe` "(A -> {unpack: A})"
 
+        describe "type signature with existential quantifier" $ do
+            result <- parseFile "TypeSignatureWithQuantifier.whippet"
+            whenParsesToSig result $ do
+                it "has the expected type parameters" $
+                    fnType' result `shouldBe` "(forall a. ((forall s. ST s a) -> a))"
+
 
     describe "function definitions" $ do
 
