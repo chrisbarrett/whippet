@@ -189,6 +189,7 @@ functionBody =
            , EVar <$> (ident <|> ctorName) <* optional semi
            , hole                          <* optional semi
            , ELit <$> numberLit            <* optional semi
+           , parens expr                   <* optional semi
            , expr <* semi
            ]
 
