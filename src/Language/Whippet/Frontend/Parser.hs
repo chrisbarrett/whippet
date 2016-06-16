@@ -180,7 +180,17 @@ function = do
 
 functionBody :: P Expr
 functionBody =
-    expr <* semi
+    choice [ ELit <$> recordLit            <* optional semi
+           , fnLit                         <* optional semi
+           , ELit <$> stringLit            <* optional semi
+           , ELit <$> charLit              <* optional semi
+           , ELit <$> listLiteral          <* optional semi
+           , EMatch <$> match              <* optional semi
+           , EVar <$> (ident <|> ctorName) <* optional semi
+           , hole                          <* optional semi
+           , ELit <$> numberLit            <* optional semi
+           , expr <* semi
+           ]
 
 functionSig :: P FunctionSig
 functionSig = do
