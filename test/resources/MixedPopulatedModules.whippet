@@ -2,7 +2,7 @@ module A {
 }
 
 module B {
-  let id a = a
+  let id a = a;
 }
 
 module C {

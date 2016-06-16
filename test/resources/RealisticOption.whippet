@@ -13,26 +13,26 @@ module Option {
   let get d = fn {
     | Some x -> x
     | None   -> d
-  }
+  };
 
   let some? = fn {
     | Some _ -> True
     | None   -> False
-  }
+  };
 
   let none? = fn {
     | Some _ -> False
     | None   -> True
-  }
+  };
 
   let map f = fn {
     | Some x -> Some (f x)
     | None   -> None
-  }
+  };
 
   let flatMap f = fn {
     | Some x -> f x
     | None   -> None
-  }
+  };
 
 }

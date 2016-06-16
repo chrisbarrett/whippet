@@ -19,7 +19,8 @@ import qualified Text.Parser.LookAhead         as Parser
 import qualified Text.Parser.Token.Highlight   as Parser
 import qualified Text.Parser.Token.Style       as Parser
 import           Text.Trifecta                 hiding (braces, brackets, comma,
-                                                eof, ident, parens, stringLit)
+                                                eof, ident, parens, semi,
+                                                stringLit)
 import qualified Text.Trifecta                 as Trifecta
 import qualified Text.Trifecta.Delta           as Trifecta
 
@@ -179,18 +180,7 @@ function = do
 
 functionBody :: P Expr
 functionBody =
-    choice [ parens expr
-           , fnLit
-           , ELit <$> stringLit
-           , ELit <$> charLit
-           , ELit <$> listLiteral
-           , EMatch <$> match
-           , EVar <$> (ident <|> ctorName)
-           , hole
-           , ELit <$> numberLit
-           , try (ELit <$> recordLit)
-           , braces expr
-           ]
+    expr <* semi
 
 functionSig :: P FunctionSig
 functionSig = do
@@ -615,6 +605,12 @@ rarrow :: P ()
 rarrow =
     op "->"
     <?> "right arrow"
+
+
+semi :: P ()
+semi =
+    op ";"
+    <?> "semicolon"
 
 braces :: P a -> P a
 braces =

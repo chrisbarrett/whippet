@@ -224,7 +224,6 @@ spec = do
         describe "populated module" $ do
             result <- parseFile "PopulatedModule.whippet"
             it "should parse successfully" $
-                const pending $
                 result `shouldSatisfy` is _Right
 
         describe "multiple toplevel modules" $ do
@@ -237,19 +236,16 @@ spec = do
             describe "some empty" $ do
                 result <- parseFile "MixedPopulatedModules.whippet"
                 it "should parse successfully" $
-                    const pending $
                     result `shouldSatisfy` is _Right
 
         describe "multiple toplevel types" $ do
             result <- parseFile "TwoTypes.whippet"
             it "should parse successfully" $
-                const pending $
                 result `shouldSatisfy` is _Right
 
         describe "options" $ do
             result <- parseFile "RealisticOption.whippet"
             it "should parse successfully" $
-                const pending $
                 result `shouldSatisfy` is _Right
 
         describe "indentation sensitivity" $ do
@@ -269,11 +265,10 @@ spec = do
 
             describe "example 1" $ do
                 let result = Parser.parseString $
-                             unlines [ "let foo x y = {"
+                             unlines [ "let foo x y ="
                                      , "  let x = x;"
                                      , "  let y = y;"
-                                     , "  foo"
-                                     , "}"
+                                     , "  foo;"
                                      ]
 
                     expected = function "foo" ["x", "y"] $

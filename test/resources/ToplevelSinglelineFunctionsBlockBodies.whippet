@@ -1,6 +1,6 @@
-let id a = {
-  a
-}
-let const a b = {
-  a
-}
+let id a = (
+    a
+);
+let const a b = (
+    a
+);

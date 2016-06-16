@@ -1,1 +1,1 @@
-let identity (x: a) = x
+let identity (x: a) = x;
