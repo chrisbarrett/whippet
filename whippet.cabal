@@ -15,10 +15,10 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Language.Whippet.Frontend.AST
-                     , Language.Whippet.Frontend.AST.Types
-                     , Language.Whippet.Frontend.AST.Lenses
-                     , Language.Whippet.Frontend.Parser
+  exposed-modules:     Language.Whippet.AST
+                     , Language.Whippet.AST.Types
+                     , Language.Whippet.AST.Lenses
+                     , Language.Whippet.Parser
   build-depends:       base >= 4.7 && < 5
                      , bytestring
                      , containers

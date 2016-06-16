@@ -2,7 +2,7 @@
 
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Whippet.Frontend.Parser.ParseUtils where
+module Language.Whippet.Parser.ParseUtils where
 
 import           Control.Lens
 import           Control.Monad                    (when)
@@ -10,9 +10,9 @@ import           Data.ByteString.Internal (ByteString)
 import           Data.Monoid                      ((<>))
 import           Data.String                      (fromString)
 import           Data.Text (Text)
-import           Language.Whippet.Frontend.AST
-import qualified Language.Whippet.Frontend.Parser as Parser
-import           Language.Whippet.Frontend.PPrint
+import           Language.Whippet.AST
+import qualified Language.Whippet.Parser as Parser
+import           Language.Whippet.PPrint
 import qualified Paths_whippet                    as Paths
 import           Test.Hspec
 import           Text.PrettyPrint.ANSI.Leijen     (Doc)

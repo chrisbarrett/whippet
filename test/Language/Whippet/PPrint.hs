@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Whippet.Frontend.PPrint where
+module Language.Whippet.PPrint where
 
 import           Control.Lens
-import           Data.List.NonEmpty            (NonEmpty)
-import qualified Data.List.NonEmpty            as NonEmpty
-import           Data.Monoid                   ((<>))
-import           Data.Text                     (Text)
-import qualified Data.Text                     as Text
-import           Language.Whippet.Frontend.AST
+import           Data.List.NonEmpty   (NonEmpty)
+import qualified Data.List.NonEmpty   as NonEmpty
+import           Data.Monoid          ((<>))
+import           Data.Text            (Text)
+import qualified Data.Text            as Text
+import           Language.Whippet.AST
 
 class PPrint a where
     pprint :: a -> Text

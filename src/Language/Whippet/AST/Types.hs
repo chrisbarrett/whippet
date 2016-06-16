@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Language.Whippet.Frontend.AST.Types where
+module Language.Whippet.AST.Types where
 
 import           Control.Lens.Plated
 import           Data.Data           (Data)

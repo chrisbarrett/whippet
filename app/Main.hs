@@ -2,15 +2,15 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Main where
 
-import           Control.Monad                    (when)
-import           Language.Whippet.Frontend.AST    (TopLevel)
-import qualified Language.Whippet.Frontend.Parser as Parser
+import           Control.Monad                (when)
+import           Language.Whippet.AST         (TopLevel)
+import qualified Language.Whippet.Parser      as Parser
 import           Options.Applicative
-import qualified System.Environment               as Environment
-import qualified System.Exit                      as Exit
-import           System.IO                        (stderr, stdout)
-import qualified Text.PrettyPrint.ANSI.Leijen     as PP
-import qualified Text.Trifecta                    as Trifecta
+import qualified System.Environment           as Environment
+import qualified System.Exit                  as Exit
+import           System.IO                    (stderr, stdout)
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import qualified Text.Trifecta                as Trifecta
 
 main :: IO ()
 main = do

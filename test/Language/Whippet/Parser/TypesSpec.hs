@@ -1,16 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Whippet.Frontend.Parser.TypesSpec where
+module Language.Whippet.Parser.TypesSpec where
 
 import           Control.Lens
 import           Control.Lens.Extras
-import           Control.Monad                               (when)
-import           Data.Monoid                                 ((<>))
-import           Data.Text                                   (Text)
+import           Control.Monad                      (when)
+import           Data.Monoid                        ((<>))
+import           Data.Text                          (Text)
 import           Debug.Trace
-import           Language.Whippet.Frontend.AST
-import qualified Language.Whippet.Frontend.Parser            as Parser
-import           Language.Whippet.Frontend.Parser.ParseUtils
-import           Language.Whippet.Frontend.PPrint
+import           Language.Whippet.AST
+import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser.ParseUtils
+import           Language.Whippet.PPrint
 import           Test.Hspec
 
 main :: IO ()

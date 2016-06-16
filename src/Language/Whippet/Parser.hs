@@ -1,28 +1,28 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE OverloadedStrings          #-}
-module Language.Whippet.Frontend.Parser where
+module Language.Whippet.Parser where
 
-import           Control.Applicative           (Alternative, (<|>))
-import           Control.Lens                  hiding (op)
-import           Control.Monad                 (MonadPlus)
-import           Control.Monad.Trans           (MonadIO)
-import qualified Data.List.NonEmpty            as NonEmpty
-import           Data.Monoid                   ((<>))
+import           Control.Applicative         (Alternative, (<|>))
+import           Control.Lens                hiding (op)
+import           Control.Monad               (MonadPlus)
+import           Control.Monad.Trans         (MonadIO)
+import qualified Data.List.NonEmpty          as NonEmpty
+import           Data.Monoid                 ((<>))
 import           Data.Semigroup
-import           Data.String                   (fromString)
-import           Data.Text                     (Text)
-import qualified Data.Text                     as Text
-import           Language.Whippet.Frontend.AST hiding (functionBody)
-import qualified Text.Parser.Expression        as Parser
-import qualified Text.Parser.LookAhead         as Parser
-import qualified Text.Parser.Token.Highlight   as Parser
-import qualified Text.Parser.Token.Style       as Parser
-import           Text.Trifecta                 hiding (braces, brackets, comma,
-                                                eof, ident, parens, semi,
-                                                stringLit)
-import qualified Text.Trifecta                 as Trifecta
-import qualified Text.Trifecta.Delta           as Trifecta
+import           Data.String                 (fromString)
+import           Data.Text                   (Text)
+import qualified Data.Text                   as Text
+import           Language.Whippet.AST        hiding (functionBody)
+import qualified Text.Parser.Expression      as Parser
+import qualified Text.Parser.LookAhead       as Parser
+import qualified Text.Parser.Token.Highlight as Parser
+import qualified Text.Parser.Token.Style     as Parser
+import           Text.Trifecta               hiding (braces, brackets, comma,
+                                              eof, ident, parens, semi,
+                                              stringLit)
+import qualified Text.Trifecta               as Trifecta
+import qualified Text.Trifecta.Delta         as Trifecta
 
 -- * Custom parser
 

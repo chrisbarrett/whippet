@@ -1,19 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Whippet.Frontend.Parser.ExprSpec where
+module Language.Whippet.Parser.ExprSpec where
 
 import           Control.Lens
 import           Control.Lens.Extras
-import           Control.Monad                               (when)
-import qualified Data.ByteString.Internal                    as BS
-import qualified Data.List.NonEmpty                          as NonEmpty
-import           Data.Text                                   (Text)
-import           Language.Whippet.Frontend.AST
-import qualified Language.Whippet.Frontend.Parser            as Parser
-import           Language.Whippet.Frontend.Parser.ParseUtils
-import           Language.Whippet.Frontend.PPrint
+import           Control.Monad                      (when)
+import qualified Data.ByteString.Internal           as BS
+import qualified Data.List.NonEmpty                 as NonEmpty
+import           Data.Text                          (Text)
+import           Language.Whippet.AST
+import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser.ParseUtils
+import           Language.Whippet.PPrint
 import           Test.Hspec
-import           Text.PrettyPrint.ANSI.Leijen                (Doc)
-import qualified Text.Trifecta                               as Trifecta
+import           Text.PrettyPrint.ANSI.Leijen       (Doc)
+import qualified Text.Trifecta                      as Trifecta
 
 main :: IO ()
 main = hspec spec

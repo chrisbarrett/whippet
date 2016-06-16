@@ -1,18 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Language.Whippet.Frontend.Parser.ToplevelSpec where
+module Language.Whippet.Parser.ToplevelSpec where
 
 import           Control.Lens
 import           Control.Lens.Extras
-import           Control.Monad                               (when)
-import qualified Data.ByteString.Internal                    as BS
-import qualified Data.List.NonEmpty                          as NonEmpty
-import           Data.Text                                   (Text)
-import           Language.Whippet.Frontend.AST
-import qualified Language.Whippet.Frontend.Parser            as Parser
-import           Language.Whippet.Frontend.Parser.ParseUtils
-import           Language.Whippet.Frontend.PPrint
+import           Control.Monad                      (when)
+import qualified Data.ByteString.Internal           as BS
+import qualified Data.List.NonEmpty                 as NonEmpty
+import           Data.Text                          (Text)
+import           Language.Whippet.AST
+import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser.ParseUtils
+import           Language.Whippet.PPrint
 import           Test.Hspec
-import qualified Text.Trifecta                               as Trifecta
+import qualified Text.Trifecta                      as Trifecta
 
 parseAst :: BS.ByteString -> ParsedAst
 parseAst = parseString Parser.ast
