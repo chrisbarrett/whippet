@@ -37,7 +37,7 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "unit"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "Unit"
 
         describe "binary type signature" $ do
@@ -45,7 +45,7 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "identity"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "(a -> a)"
 
         describe "ternary type signature" $ do
@@ -53,7 +53,7 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "const"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "(a -> (b -> a))"
 
         describe "type signature with paranthesised identifier" $ do
@@ -61,7 +61,7 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "const"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "(a -> (b -> a))"
 
         describe "type signature with type constructor parameter" $ do
@@ -69,7 +69,7 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "getOpt"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "(a -> (Option a -> a))"
 
         describe "type signature with function type parameter" $ do
@@ -77,7 +77,7 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "map"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "((a -> b) -> (List a -> List b))"
 
         describe "type signature with structural type as input" $ do
@@ -85,7 +85,7 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "first"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "({fst: A, snd: B} -> A)"
 
         describe "type signature with structural type as output" $ do
@@ -93,13 +93,13 @@ spec = do
             whenParsesToSig result $ do
                 it "has the expected identifier" $
                     fnName result `shouldBe` "box"
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "(A -> {unpack: A})"
 
         describe "type signature with existential quantifier" $ do
             result <- parseFile "TypeSignatureWithQuantifier.whippet"
             whenParsesToSig result $ do
-                it "has the expected type parameters" $
+                it "has the expected type signature" $
                     fnType' result `shouldBe` "(forall a. ((forall s. ST s a) -> a))"
 
         describe "type signature with constraint" $ do
