@@ -139,10 +139,17 @@ data Type
     | TyApp        Type Type
     | TyArrow      Type Type
     | TyForall     (NonEmpty TypeParameter) Type
+    | TyConstraint (NonEmpty Constraint) Type
     deriving (Eq, Ord, Show, Data)
 
 instance Plated Type where
     plate = uniplate
+
+data Constraint = Constraint {
+      _constraintCtor   :: Ident
+    , _constraintParams :: NonEmpty TypeParameter
+    }
+    deriving (Eq, Ord, Show, Data)
 
 newtype TypeParameter = TypeParameter {_typeParameterIdent :: Ident}
     deriving (Eq, Ord, Show, Data)

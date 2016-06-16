@@ -2,6 +2,7 @@
 module Language.Whippet.Frontend.PPrint where
 
 import           Control.Lens
+import           Data.List.NonEmpty            (NonEmpty)
 import qualified Data.List.NonEmpty            as NonEmpty
 import           Data.Monoid                   ((<>))
 import           Data.Text                     (Text)
@@ -22,12 +23,13 @@ instance PPrint TypeParameter where
 
 instance PPrint QualId where
     pprint (QualId xs) =
-        let ts = map pprint (NonEmpty.toList xs)
-        in Text.intercalate "." ts
+        Text.intercalate "." (xs ^.. traverse.pprint')
 
 instance PPrint Field where
-     pprint f =
-         (f ^. fieldIdent.pprint') <> ": " <> (f ^. fieldType.pprint')
+     pprint f = name <> ": " <> ty
+       where
+         name = f ^. fieldIdent.pprint'
+         ty = f ^. fieldType.pprint'
 
 instance PPrint Type where
     pprint (TyNominal i) = pprint i
@@ -38,12 +40,25 @@ instance PPrint Type where
         Text.unwords [pprint x, pprint y]
 
     pprint (TyStructural fs) =
-        "{" <> Text.intercalate ", " (map pprint fs) <> "}"
+        "{" <> fields <> "}"
+      where
+        fields = Text.intercalate ", " (fs ^.. traverse.pprint')
 
     pprint (TyArrow a b) =
         "(" <> pprint a <> " -> " <> pprint b <> ")"
 
     pprint (TyForall ps t) =
-        "(forall " <> pfmt ps <> ". " <> pprint t <> ")"
+        "(forall " <> binders <> ". " <> pprint t <> ")"
         where
-          pfmt = Text.unwords . fmap pprint . NonEmpty.toList
+          binders = Text.unwords (ps ^.. traverse.pprint')
+
+    pprint (TyConstraint t u) =
+        "((" <> constraints <> ") => " <> pprint u <> ")"
+      where
+        constraints = Text.intercalate ", " (t ^.. traverse.pprint')
+
+instance PPrint Constraint where
+    pprint c = Text.unwords (ctor : params)
+      where
+        ctor = c ^. constraintCtor.pprint'
+        params = c ^.. constraintParams.traverse.pprint'

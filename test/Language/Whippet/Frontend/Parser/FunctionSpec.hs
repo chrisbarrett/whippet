@@ -102,6 +102,18 @@ spec = do
                 it "has the expected type parameters" $
                     fnType' result `shouldBe` "(forall a. ((forall s. ST s a) -> a))"
 
+        describe "type signature with constraint" $ do
+            result <- parseFile "TypeSignatureWithConstraint.whippet"
+            whenParsesToSig result $ do
+                it "has the expected type signature" $
+                    fnType' result `shouldBe` "((Eq a) => (a -> (a -> Bool)))"
+
+        describe "type signature with multiple constraints" $ do
+            result <- parseFile "TypeSignatureWithMultipleConstraints.whippet"
+            whenParsesToSig result $ do
+                it "has the expected type signature" $
+                    fnType' result `shouldBe` "((Eq a, Show a) => a)"
+
 
     describe "function definitions" $ do
 

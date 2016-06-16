@@ -260,12 +260,14 @@ typeRef =
     operators = [ [Parser.Infix (pure TyApp) Parser.AssocLeft]
                 , [Parser.Infix (rarrow *> pure TyArrow) Parser.AssocRight]
                 ]
+
     tyTerm =
         choice [ parens typeRef
+               , forallType
+               , constraintType
                , nominalType
                , structuralType
                , typeVariable
-               , forallType
                ]
 
 forallType :: P Type
@@ -275,6 +277,23 @@ forallType = do
     dot
     t <- typeRef
     pure (TyForall binders t)
+
+constraintType :: P Type
+constraintType =
+    (parens parser <|> parser) <?> "constraint"
+  where
+    parser =
+        TyConstraint <$> try constraints <*> typeRef
+
+    constraints = do
+        res <- NonEmpty.fromList <$> constraint `sepBy1` comma
+        reserved "=>"
+        pure res
+
+    constraint = do
+        ctor <- typeclassName
+        ps <- NonEmpty.fromList <$> some typeParameter
+        pure (Constraint ctor ps)
 
 typeVariable :: P Type
 typeVariable =
