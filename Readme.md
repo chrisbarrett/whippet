@@ -23,7 +23,7 @@ We'll see how far I get. ;)
 The current Whippet syntax is OCaml-inspired, though it might become more
 Haskelly as I iterate on the design.
 
-```ocaml
+```rust
 type Option a = Some a | None
 
 signature Option {
