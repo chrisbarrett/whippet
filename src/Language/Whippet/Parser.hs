@@ -464,6 +464,7 @@ listLiteral =
     parser =
       LitList <$> brackets (optional comma *> expr `sepEndBy` comma)
 
+
 -- * Pattern matching
 
 patterns :: P [Pat]
@@ -616,7 +617,6 @@ rarrow :: P ()
 rarrow =
     op "->"
     <?> "right arrow"
-
 
 semi :: P ()
 semi =
