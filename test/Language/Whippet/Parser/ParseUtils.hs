@@ -66,6 +66,9 @@ tyVar = TyVar . ident
 int :: Integer -> Expr
 int = ELit . LitInt
 
+eann :: Expr -> Type -> Expr
+eann e t = EAnnotation (Annotation e t)
+
 var :: Text -> Expr
 var = EVar . Ident emptySpan
 
