@@ -19,7 +19,7 @@ main :: IO ()
 main = hspec spec
 
 parseExpr :: BS.ByteString -> Either Doc Expr
-parseExpr = parseString Parser.expr
+parseExpr = parseString (Parser.expr <* Trifecta.eof)
 
 parseExprFromFile file = runIO $
     parseFileFromResources (Parser.expr <* Trifecta.eof) file
@@ -55,9 +55,8 @@ spec = do
                     var result `shouldBe` ["x?"]
 
         describe "identifier starting with a number" $ do
-            let result = parseExpr "1x"
+            let result = parseExpr "1a"
             it "should fail to parse" $
-                const pending $
                 result `shouldSatisfy` is _Left
 
         describe "identifier containing a number" $ do

@@ -7,8 +7,8 @@ import           Control.Applicative         (Alternative, (<|>))
 import           Control.Lens                hiding (op)
 import           Control.Monad               (MonadPlus)
 import           Control.Monad.Trans         (MonadIO)
+import qualified Data.Char                   as Char
 import qualified Data.List.NonEmpty          as NonEmpty
-import           Data.Monoid                 ((<>))
 import           Data.Semigroup
 import           Data.String                 (fromString)
 import           Data.Text                   (Text)
@@ -443,8 +443,14 @@ hole = do
 
 numberLit :: P Lit
 numberLit = do
-    n <- try integerOrScientific
-    pure (either LitInt LitScientific n)
+    n <- try (runUnspaced integerOrScientific)
+    -- Inspect the next char in the stream to ensure unexpected suffixes are
+    -- rejected.
+    next <- choice [eof *> pure '0', Parser.lookAhead anyChar]
+    if Char.isLetter next
+      then unexpected ("number suffix " <> "'" <> [next] <> "'")
+      else token (pure (either LitInt LitScientific n))
+
 
 stringLit :: P Lit
 stringLit =
