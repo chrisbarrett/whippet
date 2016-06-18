@@ -7,15 +7,17 @@ import           Control.Monad                      (when)
 import qualified Data.ByteString.Internal           as BS
 import qualified Data.List.NonEmpty                 as NonEmpty
 import           Data.Text                          (Text)
-import           Language.Whippet.AST
+import           Language.Whippet.Parser            hiding (parseFile,
+                                                     parseString)
 import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser.Lenses
 import           Language.Whippet.Parser.ParseUtils
 import           Language.Whippet.PPrint
 import           Test.Hspec
 import qualified Text.Trifecta                      as Trifecta
 
-parseAst :: BS.ByteString -> ParsedAst
-parseAst = parseString Parser.ast
+parseTopLevelItem :: BS.ByteString -> ParsedAst
+parseTopLevelItem = parseString Parser.topLevelItem
 
 main :: IO ()
 main = hspec spec
@@ -159,19 +161,19 @@ spec = do
                 ast ^. _Right._AstOpen._Open._1._QualId.to NonEmpty.toList
 
         describe "simple open" $ do
-            let result = parseAst "open M"
+            let result = parseTopLevelItem "open M"
             whenParsesToOpen result $
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
 
         describe "open module with path" $ do
-            let result = parseAst "open M.N"
+            let result = parseTopLevelItem "open M.N"
             whenParsesToOpen result $
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M", ident "N"]
 
         describe "open hiding" $ do
-            let result = parseAst "open M hiding (foo, bar)"
+            let result = parseTopLevelItem "open M hiding (foo, bar)"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -179,13 +181,13 @@ spec = do
                     hidden result `shouldBe` [ident "foo", ident "bar"]
 
         describe "optional comma in 'hiding'" $ do
-            let result = parseAst "open M hiding (,foo,bar)"
+            let result = parseTopLevelItem "open M hiding (,foo,bar)"
             whenParsesToOpen result $
                 it "has the expected hidden identifiers" $
                     hidden result `shouldBe` [ident "foo", ident "bar"]
 
         describe "open with renaming" $ do
-            let result = parseAst "open M as X"
+            let result = parseTopLevelItem "open M as X"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]
@@ -193,7 +195,7 @@ spec = do
                     rename result `shouldBe` [ident "X"]
 
         describe "open with renaming and hidden" $ do
-            let result = parseAst "open M as X hiding (x,y)"
+            let result = parseTopLevelItem "open M as X hiding (x,y)"
             whenParsesToOpen result $ do
                 it "has the expected module ID" $
                     modId result `shouldBe` [ident "M"]

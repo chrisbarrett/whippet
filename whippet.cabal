@@ -13,16 +13,15 @@ build-type:          Simple
 data-files:          test/resources/*.whippet
 cabal-version:       >=1.10
 
-library
-  hs-source-dirs:      src
 
-  exposed-modules:     Language.Whippet.AST
-                     , Language.Whippet.AST.Types
-                     , Language.Whippet.AST.Lenses
-                     , Language.Whippet.Parser
+library
+  exposed-modules:     Language.Whippet.Parser
+                     , Language.Whippet.Parser.Lenses
+                     , Language.Whippet.Parser.Types
                      , Language.Whippet.Typecheck
-                     , Language.Whippet.Typecheck.Types
+                     , Language.Whippet.Typecheck.Errors
                      , Language.Whippet.Typecheck.Lenses
+                     , Language.Whippet.Typecheck.Types
 
   build-depends:       base >= 4.7 && < 5
                      , bytestring
@@ -35,23 +34,25 @@ library
                      , text
                      , trifecta
                      , validation
+
+  hs-source-dirs:      src
   default-language:    Haskell2010
 
+
 executable whippet
-  hs-source-dirs:      app
-  main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , ansi-wl-pprint
                      , optparse-applicative
                      , trifecta
                      , whippet
+
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
+
 test-suite whippet-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
   build-depends:       base
                      , ansi-wl-pprint
                      , bytestring
@@ -64,8 +65,23 @@ test-suite whippet-test
                      , trifecta
                      , validation
                      , whippet
+
+
+  other-modules:       Language.Whippet.PPrint
+                     , Language.Whippet.Parser.ExprSpec
+                     , Language.Whippet.Parser.FunctionSpec
+                     , Language.Whippet.Parser.ParseUtils
+                     , Language.Whippet.Parser.ToplevelSpec
+                     , Language.Whippet.Parser.TypeclassSpec
+                     , Language.Whippet.Parser.TypesSpec
+                     , Paths_whippet
+
+  hs-source-dirs:      test
+  type:                exitcode-stdio-1.0
+  main-is:             Spec.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
+
 
 source-repository head
   type:     git

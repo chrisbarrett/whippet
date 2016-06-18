@@ -10,8 +10,9 @@ import           Data.ByteString.Internal (ByteString)
 import           Data.Monoid                      ((<>))
 import           Data.String                      (fromString)
 import           Data.Text (Text)
-import           Language.Whippet.AST
 import qualified Language.Whippet.Parser as Parser
+import           Language.Whippet.Parser
+import           Language.Whippet.Parser.Lenses
 import           Language.Whippet.PPrint
 import qualified Paths_whippet                    as Paths
 import           Test.Hspec

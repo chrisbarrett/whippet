@@ -7,8 +7,8 @@ import           Control.Monad                      (when)
 import           Data.Monoid                        ((<>))
 import           Data.Text                          (Text)
 import           Debug.Trace
-import           Language.Whippet.AST
-import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser            hiding (parseFile)
+import           Language.Whippet.Parser.Lenses
 import           Language.Whippet.Parser.ParseUtils
 import           Language.Whippet.PPrint
 import           Test.Hspec
@@ -27,7 +27,7 @@ spec = do
 
         when (is _Right result) $
             it "has the expected type name" $ do
-                let typeName = result ^. _Right ._AstDecl ._DecAbsType .absTypeIdent .pprint'
+                let typeName = result ^. _Right._AstDecl._DecAbsType.absTypeIdent.pprint'
                 typeName `shouldBe` "Void"
 
 
@@ -113,6 +113,8 @@ spec = do
 
             typeIdentifiers :: Type -> Maybe [Text]
             typeIdentifiers (TyVar i)       = Just [pprint i]
+            typeIdentifiers TyForall {}     = Nothing
+            typeIdentifiers TyConstraint {} = Nothing
             typeIdentifiers TyStructural {} = Nothing
             typeIdentifiers (TyApp x y)     = concat <$> sequence [typeIdentifiers x, typeIdentifiers y]
 

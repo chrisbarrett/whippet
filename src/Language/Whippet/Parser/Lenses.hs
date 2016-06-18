@@ -1,12 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 -- |AST lenses must be implemented as orphans due to the Template Haskell stage
 -- restriction prohibiting mutually recursive types.
-module Language.Whippet.AST.Lenses where
+module Language.Whippet.Parser.Lenses where
 
-import           Control.Lens               (Lens')
+import           Control.Lens                  (Lens')
 import           Control.Lens.TH
-import           Data.Text                  (Text)
-import           Language.Whippet.AST.Types
+import           Data.Text                     (Text)
+import           Language.Whippet.Parser.Types
 
 makeLenses ''Ident
 makePrisms ''Ident

@@ -2,12 +2,13 @@
 module Language.Whippet.PPrint where
 
 import           Control.Lens
-import           Data.List.NonEmpty   (NonEmpty)
-import qualified Data.List.NonEmpty   as NonEmpty
-import           Data.Monoid          ((<>))
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
-import           Language.Whippet.AST
+import           Data.List.NonEmpty             (NonEmpty)
+import qualified Data.List.NonEmpty             as NonEmpty
+import           Data.Monoid                    ((<>))
+import           Data.Text                      (Text)
+import qualified Data.Text                      as Text
+import           Language.Whippet.Parser
+import           Language.Whippet.Parser.Lenses
 
 class PPrint a where
     pprint :: a -> Text

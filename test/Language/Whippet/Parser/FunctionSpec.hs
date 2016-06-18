@@ -5,9 +5,9 @@ import           Control.Lens
 import           Control.Lens.Extras
 import           Control.Monad                      (when)
 import           Data.Text                          (Text)
-import           Language.Whippet.AST
-import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser.Lenses
 import           Language.Whippet.Parser.ParseUtils
+import           Language.Whippet.Parser.Types
 import           Language.Whippet.PPrint
 import           Test.Hspec
 
@@ -98,19 +98,19 @@ spec = do
 
         describe "type signature with existential quantifier" $ do
             result <- parseFile "TypeSignatureWithQuantifier.whippet"
-            whenParsesToSig result $ do
+            whenParsesToSig result $
                 it "has the expected type signature" $
                     fnType' result `shouldBe` "(forall a. ((forall s. ST s a) -> a))"
 
         describe "type signature with constraint" $ do
             result <- parseFile "TypeSignatureWithConstraint.whippet"
-            whenParsesToSig result $ do
+            whenParsesToSig result $
                 it "has the expected type signature" $
                     fnType' result `shouldBe` "((Eq a) => (a -> (a -> Bool)))"
 
         describe "type signature with multiple constraints" $ do
             result <- parseFile "TypeSignatureWithMultipleConstraints.whippet"
-            whenParsesToSig result $ do
+            whenParsesToSig result $
                 it "has the expected type signature" $
                     fnType' result `shouldBe` "((Eq a, Show a) => a)"
 

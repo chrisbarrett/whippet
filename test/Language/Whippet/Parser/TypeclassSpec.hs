@@ -6,8 +6,8 @@ import           Control.Lens.Extras
 import           Control.Monad                      (when)
 import           Data.Text                          (Text)
 import           Debug.Trace
-import           Language.Whippet.AST
-import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser            hiding (parseFile)
+import           Language.Whippet.Parser.Lenses
 import           Language.Whippet.Parser.ParseUtils
 import           Language.Whippet.PPrint
 import           Test.Hspec

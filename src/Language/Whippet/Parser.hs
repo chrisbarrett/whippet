@@ -1,30 +1,55 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE OverloadedStrings          #-}
-module Language.Whippet.Parser where
+-- |This module implements the lexing and parsing of the Whippet language.
+module Language.Whippet.Parser (
+    -- * Parser types
+      module Language.Whippet.Parser.Types
+    -- |Custom parser type for the language, which handles the whitespace and
+    -- comment rules of Whippet.
+    , P
+    -- |Given a Whippet parser, extract the underlying Trifecta parser for testing.
+    , runP
+    -- * Parser entrypoints
+    --
+    -- These are the functions clients use to invoke the parser.
+    , parseFile
+    , parseString
+    -- * Concrete parser functions
+    --
+    -- These are the two main language parsers. They are exported for tests.
 
-import           Control.Applicative         (Alternative, (<|>))
-import           Control.Lens                hiding (op)
-import           Control.Monad               (MonadPlus)
-import           Control.Monad.Trans         (MonadIO)
-import qualified Data.Char                   as Char
-import qualified Data.List.NonEmpty          as NonEmpty
+    -- |Top-down parser for a Whippet source file.
+    , topLevel
+    -- |Parser for a single toplevel entry in a Whippet source file.
+    , topLevelItem
+    -- |Parser for expressions.
+    , expr
+    ) where
+
+import           Control.Applicative           (Alternative, (<|>))
+import           Control.Lens                  hiding (op)
+import           Control.Monad                 (MonadPlus)
+import           Control.Monad.Trans           (MonadIO)
+import qualified Data.Char                     as Char
+import qualified Data.List.NonEmpty            as NonEmpty
 import           Data.Semigroup
-import           Data.String                 (fromString)
-import           Data.Text                   (Text)
-import qualified Data.Text                   as Text
-import           Language.Whippet.AST        hiding (functionBody)
-import qualified Text.Parser.Expression      as Parser
-import qualified Text.Parser.LookAhead       as Parser
-import qualified Text.Parser.Token.Highlight as Parser
-import qualified Text.Parser.Token.Style     as Parser
-import           Text.Trifecta               hiding (braces, brackets, comma,
-                                              eof, ident, parens, semi,
-                                              stringLit)
-import qualified Text.Trifecta               as Trifecta
-import qualified Text.Trifecta.Delta         as Trifecta
+import           Data.String                   (fromString)
+import           Data.Text                     (Text)
+import qualified Data.Text                     as Text
+import qualified Text.Parser.Expression        as Parser
+import qualified Text.Parser.LookAhead         as Parser
+import qualified Text.Parser.Token.Highlight   as Parser
+import qualified Text.Parser.Token.Style       as Parser
+import           Text.Trifecta                 hiding (braces, brackets, comma,
+                                                eof, ident, parens, parseString,
+                                                semi, stringLit)
+import qualified Text.Trifecta                 as Trifecta
+import qualified Text.Trifecta.Delta           as Trifecta
 
--- * Custom parser
+import           Language.Whippet.Parser.Types
+
+-- Custom parser
 
 newtype P a = P {unP :: Parser a}
     deriving (
@@ -53,8 +78,40 @@ spaceParser p =
 runP :: P a -> Parser a
 runP = unP
 
+identStyle :: IdentifierStyle P
+identStyle =
+    Parser.emptyIdents
+        & styleReserved .~ reservedWords
+        & styleStart    .~ letter
+        & styleLetter   .~ (alphaNum <|> oneOf "_?")
+    where
+      reservedWords = [ "module"
+                      , "signature"
+                      , "type"
+                      , "record"
+                      , "let"
+                      , "unless"
+                      , "if"
+                      , "then"
+                      , "else"
+                      , "fn"
+                      , "as"
+                      , "match"
+                      , "with"
+                      , "open"
+                      , "hiding"
+                      , "typeclass"
+                      , "instance"
+                      , "forall"
+                      , "="
+                      , "->"
+                      , "=>"
+                      , "|"
+                      , ";"
+                      ]
 
--- * Parser definitions
+
+-- Parser definitions
 
 parseFile :: MonadIO m => FilePath -> m (Result TopLevel)
 parseFile =
@@ -67,17 +124,18 @@ parseString =
 topLevel :: P TopLevel
 topLevel = do
     whiteSpace
-    many ast <* eof
+    many topLevelItem <* eof
 
-ast :: P AST
-ast =
+topLevelItem :: P AST
+topLevelItem =
     choice [ AstOpen <$> open <?> "open"
            , AstModule <$> module' <?> "module"
            , AstSignature <$> signature <?> "signature"
            , AstDecl <$> declaration <?> "declaration"
            ]
 
--- * Top-level
+
+-- Top-level
 
 open :: P Open
 open = do
@@ -98,7 +156,7 @@ module' :: P Module
 module' = do
     reserved "module"
     i <- qualifiedModule
-    b <- braces (many ast)
+    b <- braces (many topLevelItem)
     pure (Module i b)
 
 typeclass :: P Typeclass
@@ -252,7 +310,7 @@ recordType = do
     pure (RecordType i ts fs)
 
 
--- * Types
+-- Types
 
 typeRef :: P Type
 typeRef =
@@ -326,7 +384,7 @@ typeParameter = do
     pure (TypeParameter (Ident span s))
 
 
--- * Expressions
+-- Expressions
 
 expr :: P Expr
 expr = do
@@ -481,7 +539,7 @@ listLiteral =
       LitList <$> brackets (optional comma *> expr `sepEndBy` comma)
 
 
--- * Pattern matching
+-- Pattern matching
 
 patterns :: P [Pat]
 patterns = braces (optional pipe *> pat `sepBy` pipe)
@@ -539,33 +597,7 @@ discriminator = do
                 ]
 
 
--- * Helpers
-
-reservedWords = [ "module"
-                , "signature"
-                , "type"
-                , "record"
-                , "let"
-                , "unless"
-                , "if"
-                , "then"
-                , "else"
-                , "fn"
-                , "as"
-                , "match"
-                , "with"
-                , "open"
-                , "hiding"
-                , "typeclass"
-                , "instance"
-                , "forall"
-                , "="
-                , "->"
-                , "=>"
-                , "|"
-                , ";"
-                ]
-
+-- Identifiers
 
 ctorName :: P Ident
 ctorName =
@@ -616,15 +648,14 @@ ident = do
     (s :~ span) <- spanned (Trifecta.ident identStyle)
     pure (Ident span s)
 
-identStyle :: IdentifierStyle P
-identStyle =
-    Parser.emptyIdents
-        & styleReserved .~ reservedWords
-        & styleStart    .~ letter
-        & styleLetter   .~ (alphaNum <|> oneOf "_?")
-
 reserved :: String -> P ()
 reserved s = reserve identStyle s <?> s
+
+
+-- Syntactic elements
+--
+-- Some of these are redefinitions of the ones provided by Text.Parser to
+-- provide clearer errors.
 
 op :: (Monad m, TokenParsing m) => String -> m ()
 op w =

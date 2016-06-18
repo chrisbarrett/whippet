@@ -3,7 +3,6 @@
 module Main where
 
 import           Control.Monad                (when)
-import           Language.Whippet.AST         (TopLevel)
 import qualified Language.Whippet.Parser      as Parser
 import           Options.Applicative
 import qualified System.Environment           as Environment

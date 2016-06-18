@@ -7,9 +7,10 @@ import           Control.Monad                      (when)
 import qualified Data.ByteString.Internal           as BS
 import qualified Data.List.NonEmpty                 as NonEmpty
 import           Data.Text                          (Text)
-import           Language.Whippet.AST
 import qualified Language.Whippet.Parser            as Parser
+import           Language.Whippet.Parser.Lenses
 import           Language.Whippet.Parser.ParseUtils
+import           Language.Whippet.Parser.Types
 import           Language.Whippet.PPrint
 import           Test.Hspec
 import           Text.PrettyPrint.ANSI.Leijen       (Doc)
