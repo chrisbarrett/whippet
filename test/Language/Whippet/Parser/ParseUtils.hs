@@ -69,6 +69,9 @@ int = ELit . LitInt
 var :: Text -> Expr
 var = EVar . Ident emptySpan
 
+str :: Text -> Expr
+str = ELit . LitString
+
 eapp :: Expr -> Expr -> Expr
 eapp x y = EApp (App x y)
 

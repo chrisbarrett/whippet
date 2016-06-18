@@ -98,5 +98,8 @@ makePrisms ''FnOrSig
 makeLenses ''Constraint
 makePrisms ''Constraint
 
+makeLenses ''Guard
+makePrisms ''Guard
+
 text :: Lens' Ident Text
 text = identLabel

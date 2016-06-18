@@ -330,7 +330,7 @@ typeParameter = do
 
 expr :: P Expr
 expr = do
-    e <- Parser.buildExpressionParser operators term <?> "expression"
+    e <- Parser.buildExpressionParser operators exprTerm <?> "expression"
     t <- exprTypeAnnotation
     pure (maybe e (EAnnotation . Annotation e) t)
   where
@@ -345,26 +345,36 @@ expr = do
         let op = EVar (Ident span (Text.pack s))
         pure $ \x y -> EApp (App (EApp (App op x)) y)
 
-    term =
-        choice [ parens expr
-               , ELet <$> let'
-               , ELit <$> recordLit
-               , fnLit
-               , EIf <$> ifThenElse
-               , openExpr
-               , ELit <$> stringLit
-               , ELit <$> charLit
-               , ELit <$> listLiteral
-               , EMatch <$> match
-               , EVar <$> (ident <|> ctorName)
-               , hole
-               , ELit <$> numberLit
-               ]
 
+-- Expressions are a superset of the terms allowed in guards.
+
+exprTerm :: P Expr
+exprTerm =
+    choice [ guardTerm
+           , EIf <$> ifThenElse
+           ]
+
+guardTerm :: P Expr
+guardTerm =
+    choice [ parens expr
+           , ELet <$> let'
+           , ELit <$> recordLit
+           , fnLit
+           , openExpr
+           , ELit <$> stringLit
+           , ELit <$> charLit
+           , ELit <$> listLiteral
+           , EMatch <$> match
+           , EVar <$> (ident <|> ctorName)
+           , hole
+           , ELit <$> numberLit
+           ]
+  where
     openExpr = do
         o <- open
         b <- expr
         pure (EOpen o b)
+
 
 charLit :: P Lit
 charLit = LitChar <$> charLiteral
@@ -433,7 +443,7 @@ hole = do
 
 numberLit :: P Lit
 numberLit = do
-    n <- integerOrScientific
+    n <- try integerOrScientific
     pure (either LitInt LitScientific n)
 
 stringLit :: P Lit
@@ -473,8 +483,25 @@ patterns = braces (optional pipe *> pat `sepBy` pipe)
 pat :: P Pat
 pat = do
     d <- discriminator
+    g <- optional guard
     e <- rarrow *> expr
-    pure (Pat d e)
+    pure (Pat d g e)
+
+guard :: P Guard
+guard =
+    choice [ IfGuard <$> (reserved "if" *> guardExpr)
+           , UnlessGuard <$> (reserved "unless" *> guardExpr)
+           ]
+     <?> "pattern guard"
+  where
+    guardExpr :: P Expr
+    guardExpr = do
+        e <- Parser.buildExpressionParser operators guardTerm <?> "expression"
+        t <- exprTypeAnnotation
+        pure (maybe e (EAnnotation . Annotation e) t)
+      where
+        operators = [[Parser.Infix parseApp Parser.AssocLeft]]
+        parseApp = pure (\x y -> EApp (App x y))
 
 discriminator :: P Discriminator
 discriminator = do
@@ -513,6 +540,7 @@ reservedWords = [ "module"
                 , "type"
                 , "record"
                 , "let"
+                , "unless"
                 , "if"
                 , "then"
                 , "else"

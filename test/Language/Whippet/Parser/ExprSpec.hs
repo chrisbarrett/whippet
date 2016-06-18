@@ -434,6 +434,10 @@ spec = do
             discriminators expr =
                 expr ^.. _Right._EMatch.matchPatterns.traverse.patDiscriminator
 
+            guards :: Either Doc Expr -> [Guard]
+            guards expr =
+                expr ^.. _Right._EMatch.matchPatterns.traverse.patGuard._Just
+
             bodyForms :: Either Doc Expr -> [Expr]
             bodyForms expr =
                 expr ^.. _Right._EMatch.matchPatterns.traverse.patBody
@@ -501,6 +505,43 @@ spec = do
             whenParsesToMatch result $
                 it "has a wildcard binder" $
                     discriminators result `shouldBe` [dWildcard "_foo"]
+
+        describe "guards" $ do
+
+            describe "simple 'if' guard" $ do
+                let result = parseExpr "match x with { u if p -> 1 }"
+                whenParsesToMatch result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dVar "u"]
+                    it "has the expected guard" $
+                        guards result `shouldBe` [IfGuard (var "p")]
+
+            describe "simple 'unless' guard" $ do
+                let result = parseExpr "match x with { u unless p -> 1 }"
+                whenParsesToMatch result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dVar "u"]
+                    it "has the expected guard" $
+                        guards result `shouldBe` [UnlessGuard (var "p")]
+
+            describe "guard with function application" $ do
+                let result = parseExpr "match x with { u if p u -> 1 }"
+                whenParsesToMatch result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dVar "u"]
+                    it "has the expected guard" $
+                        guards result `shouldBe` [IfGuard (var "p" `eapp` var "u")]
+
+            describe "guard with literals" $ do
+                let result = parseExpr "match x with { u if p \"x\" -1 -> 1 }"
+                whenParsesToMatch result $ do
+                    it "has the expected binder" $
+                        discriminators result `shouldBe` [dVar "u"]
+                    it "has the expected guard" $
+                        guards result `shouldBe` [IfGuard (var "p"
+                                                           `eapp` str "x"
+                                                           `eapp` int (-1))]
+
 
     describe "function application" $ do
         let whenParsesToApp result assertions = do

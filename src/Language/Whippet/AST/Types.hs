@@ -53,8 +53,14 @@ data Discriminator
 
 data Pat = Pat {
       _patDiscriminator :: Discriminator
+    , _patGuard         :: Maybe Guard
     , _patBody          :: Expr
     }
+    deriving (Eq, Ord, Show, Data)
+
+data Guard
+    = IfGuard Expr
+    | UnlessGuard Expr
     deriving (Eq, Ord, Show, Data)
 
 data Lit
