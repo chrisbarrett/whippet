@@ -16,49 +16,49 @@ class PPrint a where
 pprint' :: PPrint a => Getter a Text
 pprint' = to pprint
 
-instance PPrint Ident where
+instance PPrint (Ident a) where
     pprint = view identLabel
 
-instance PPrint TypeParameter where
+instance PPrint (TypeParameter a) where
     pprint = view (typeParameterIdent.identLabel)
 
-instance PPrint QualId where
+instance PPrint (QualId a) where
     pprint (QualId xs) =
         Text.intercalate "." (xs ^.. traverse.pprint')
 
-instance PPrint Field where
+instance PPrint (Field a) where
      pprint f = name <> ": " <> ty
        where
          name = f ^. fieldIdent.pprint'
          ty = f ^. fieldType.pprint'
 
-instance PPrint Type where
-    pprint (TyNominal i) = pprint i
+instance PPrint (Type a) where
+    pprint (TyNominal _ i) = pprint i
 
-    pprint (TyVar i) = pprint i
+    pprint (TyVar _ i) = pprint i
 
-    pprint (TyApp x y) =
+    pprint (TyApp _ x y) =
         Text.unwords [pprint x, pprint y]
 
-    pprint (TyStructural fs) =
+    pprint (TyStructural _ fs) =
         "{" <> fields <> "}"
       where
         fields = Text.intercalate ", " (fs ^.. traverse.pprint')
 
-    pprint (TyArrow a b) =
+    pprint (TyArrow _ a b) =
         "(" <> pprint a <> " -> " <> pprint b <> ")"
 
-    pprint (TyForall ps t) =
+    pprint (TyForall _ ps t) =
         "(forall " <> binders <> ". " <> pprint t <> ")"
         where
           binders = Text.unwords (ps ^.. traverse.pprint')
 
-    pprint (TyConstraint t u) =
+    pprint (TyConstraint _ t u) =
         "((" <> constraints <> ") => " <> pprint u <> ")"
       where
         constraints = Text.intercalate ", " (t ^.. traverse.pprint')
 
-instance PPrint Constraint where
+instance PPrint (Constraint a) where
     pprint c = Text.unwords (ctor : params)
       where
         ctor = c ^. constraintCtor.pprint'

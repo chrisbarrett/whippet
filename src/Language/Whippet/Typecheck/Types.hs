@@ -12,10 +12,10 @@ data Type
     deriving (Show, Eq, Ord)
 
 newtype Ident = Ident {unIdent :: Text}
-    deriving (Eq, Show, IsString)
+    deriving (Eq, Show, Ord, IsString)
 
 data QualId = QualId {
       _qualIdModule :: NonEmpty Ident
     , _qualIdName   :: Ident
     }
-    deriving (Eq, Show)
+    deriving (Eq, Show, Ord)

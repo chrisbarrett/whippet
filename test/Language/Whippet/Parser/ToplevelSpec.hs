@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Whippet.Parser.ToplevelSpec where
 
@@ -17,7 +19,8 @@ import           Test.Hspec
 import qualified Text.Trifecta                      as Trifecta
 
 parseTopLevelItem :: BS.ByteString -> ParsedAst
-parseTopLevelItem = parseString Parser.topLevelItem
+parseTopLevelItem s =
+    eraseSpans <$> parseString Parser.topLevelItem s
 
 main :: IO ()
 main = hspec spec
@@ -33,7 +36,7 @@ spec = do
             result `shouldSatisfy` is (Trifecta._Success._Empty)
 
     describe "parsing modules" $ do
-        let body :: ParsedAst -> [AST]
+        let body :: ParsedAst -> [AST ()]
             body ast =
                 ast ^. _Right._AstModule.moduleBody
 
@@ -80,7 +83,7 @@ spec = do
                       .functionSigType
                       .pprint'
 
-            decls :: ParsedAst -> [Decl]
+            decls :: ParsedAst -> [Decl ()]
             decls ast =
                 ast ^. _Right._AstSignature.signatureBody
 
@@ -148,15 +151,15 @@ spec = do
                     result `shouldSatisfy` is (_Right._AstOpen)
                 when (is _Right result) assertions
 
-            hidden :: ParsedAst -> [Ident]
+            hidden :: ParsedAst -> [Ident ()]
             hidden ast =
                 ast ^. _Right._AstOpen.openHiding._Just
 
-            rename :: ParsedAst -> [Ident]
+            rename :: ParsedAst -> [Ident ()]
             rename ast =
                 ast ^.. _Right._AstOpen.openAs._Just
 
-            modId :: ParsedAst -> [Ident]
+            modId :: ParsedAst -> [Ident ()]
             modId ast =
                 ast ^. _Right._AstOpen._Open._1._QualId.to NonEmpty.toList
 
@@ -252,14 +255,14 @@ spec = do
 
         describe "indentation sensitivity" $ do
 
-            let function :: Text -> [Text] -> Expr -> AST
+            let function :: Text -> [Text] -> Expr () -> AST ()
                 function i ps b =
                     AstDecl (DecFun (Function (ident i) (map param ps) Nothing
                                         b))
                   where
                     param n = FnParam (ident n) Nothing
 
-                let' :: Text -> Expr -> Expr -> Expr
+                let' :: Text -> Expr () -> Expr () -> Expr ()
                 let' i d b =
                     ELet (Let (DVar (ident i))
                               d
@@ -274,12 +277,12 @@ spec = do
                                      ]
 
                     expected = function "foo" ["x", "y"] $
-                                 let' "x" (var "x") $
-                                 let' "y" (var "y") $
-                                 var "foo"
+                                  let' "x" (var "x") $
+                                  let' "y" (var "y") $
+                                  var "foo"
 
                 it "should parse successfully" $
                     result `shouldSatisfy` is Trifecta._Success
                 when (is Trifecta._Success result) $ do
                     it "should parse to the expected AST" $
-                        result ^. Trifecta._Success `shouldBe` [expected]
+                        result ^.. Trifecta._Success.traverse.to eraseSpans  `shouldBe` [expected]

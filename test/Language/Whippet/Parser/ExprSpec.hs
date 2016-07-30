@@ -19,8 +19,11 @@ import qualified Text.Trifecta                      as Trifecta
 main :: IO ()
 main = hspec spec
 
-parseExpr :: BS.ByteString -> Either Doc Expr
-parseExpr = parseString (Parser.expr <* Trifecta.eof)
+parseExpr :: BS.ByteString -> Either Doc (Expr ())
+parseExpr s =
+    case parseString (Parser.expr <* Trifecta.eof) s of
+      Right x -> Right (const () <$> x)
+      Left e  -> Left e
 
 parseExprFromFile file = runIO $
     parseFileFromResources (Parser.expr <* Trifecta.eof) file
@@ -177,7 +180,7 @@ spec = do
                     result `shouldSatisfy` is (_Right._ELit._LitChar)
                 when (is _Right result) assertions
 
-            char :: Either Doc Expr -> String
+            char :: Either Doc (Expr ()) -> String
             char expr =
                 expr ^.. _Right._ELit._LitChar
 
@@ -234,7 +237,7 @@ spec = do
                     result `shouldSatisfy` is (_Right._ELit._LitRecord)
                 when (is _Right result) assertions
 
-            recordContent :: Either Doc Expr -> [(Ident, Expr)]
+            recordContent :: Either Doc (Expr ()) -> [(Ident (), Expr ())]
             recordContent ast =
                 ast ^. _Right._ELit._LitRecord
 
@@ -293,29 +296,30 @@ spec = do
                     result `shouldSatisfy` is (_Right._EIf)
                 when (is _Right result) assertions
 
-            subexpressions :: Either Doc Expr -> [Expr]
-            subexpressions = view (_Right.to children)
-
         describe "simple expressions " $ do
             let result = parseExpr "if foo then bar else baz"
-            whenParsesToIfThenElse result $
-                it "has the expected values" $
-                    subexpressions result `shouldBe` [var "foo", var "bar", var "baz"]
+            whenParsesToIfThenElse result $ do
+                it "has the expected test" $
+                    result ^.. _Right._EIf.ifCondition `shouldBe` [var "foo"]
+                it "has the expected first branch" $
+                    result ^.. _Right._EIf.ifThen `shouldBe` [var "bar"]
+                it "has the expected second branch" $
+                    result ^.. _Right._EIf.ifElse `shouldBe` [var "baz"]
 
 
-    let dVar :: Text -> Discriminator
-        dVar x = DVar (Ident emptySpan x)
+    let dVar :: Text -> Discriminator ()
+        dVar x = DVar (Ident () x)
 
-        dCtor :: Text -> Discriminator
-        dCtor x = DCtor (Ident emptySpan x)
+        dCtor :: Text -> Discriminator ()
+        dCtor x = DCtor (Ident () x)
 
     describe "lambda" $ do
 
-        let discriminators :: Either Doc Expr -> [Discriminator]
+        let discriminators :: Either Doc (Expr ()) -> [Discriminator ()]
             discriminators expr =
                 expr ^.. _Right._EFn.traverse.patDiscriminator
 
-            bodyForms :: Either Doc Expr -> [Expr]
+            bodyForms :: Either Doc (Expr ()) -> [Expr ()]
             bodyForms expr =
                 expr ^.. _Right._EFn.traverse.patBody
 
@@ -426,23 +430,23 @@ spec = do
 
     describe "match expression" $ do
 
-        let scrutinee :: Either Doc Expr -> [Expr]
+        let scrutinee :: Either Doc (Expr ()) -> [Expr ()]
             scrutinee expr =
                 expr ^.. _Right._EMatch.matchExpr
 
-            discriminators :: Either Doc Expr -> [Discriminator]
+            discriminators :: Either Doc (Expr ()) -> [Discriminator ()]
             discriminators expr =
                 expr ^.. _Right._EMatch.matchPatterns.traverse.patDiscriminator
 
-            guards :: Either Doc Expr -> [Guard]
+            guards :: Either Doc (Expr ()) -> [Guard ()]
             guards expr =
                 expr ^.. _Right._EMatch.matchPatterns.traverse.patGuard._Just
 
-            bodyForms :: Either Doc Expr -> [Expr]
+            bodyForms :: Either Doc (Expr ()) -> [Expr ()]
             bodyForms expr =
                 expr ^.. _Right._EMatch.matchPatterns.traverse.patBody
 
-            dWildcard :: Text -> Discriminator
+            dWildcard :: Text -> Discriminator ()
             dWildcard = DWildcard . ident
 
             whenParsesToMatch result assertions = do
@@ -549,11 +553,11 @@ spec = do
                     result `shouldSatisfy` is (_Right._EApp)
                 when (is _Right result) assertions
 
-            function :: Either Doc Expr -> [Expr]
+            function :: Either Doc (Expr ()) -> [Expr ()]
             function expr =
                 expr ^.. _Right._EApp.appFn
 
-            argument :: Either Doc Expr -> [Expr]
+            argument :: Either Doc (Expr ()) -> [Expr ()]
             argument expr =
                 expr ^.. _Right._EApp.appArg
 
@@ -580,15 +584,15 @@ spec = do
                     result `shouldSatisfy` is (_Right._ELet)
                 when (is _Right result) assertions
 
-            discriminator :: Either Doc Expr -> [Discriminator]
+            discriminator :: Either Doc (Expr ()) -> [Discriminator ()]
             discriminator expr =
                 expr ^.. _Right._ELet.letDiscriminator
 
-            definition :: Either Doc Expr -> [Expr]
+            definition :: Either Doc (Expr ()) -> [Expr ()]
             definition expr =
                 expr ^.. _Right._ELet.letValue
 
-            body :: Either Doc Expr -> [Expr]
+            body :: Either Doc (Expr ()) -> [Expr ()]
             body expr =
                 expr ^.. _Right._ELet.letBody
 
@@ -640,19 +644,19 @@ spec = do
                     result `shouldSatisfy` is (_Right._EOpen)
                 when (is _Right result) assertions
 
-            modId :: Either Doc Expr -> [Ident]
+            modId :: Either Doc (Expr ()) -> [Ident ()]
             modId ast =
                 ast ^. _Right._EOpen._1._Open._1._QualId.to NonEmpty.toList
 
-            hidden :: Either Doc Expr -> [Ident]
+            hidden :: Either Doc (Expr ()) -> [Ident ()]
             hidden ast =
                 ast ^. _Right._EOpen._1.openHiding._Just
 
-            rename :: Either Doc Expr -> [Ident]
+            rename :: Either Doc (Expr ()) -> [Ident ()]
             rename ast =
                 ast ^.. _Right._EOpen._1.openAs._Just
 
-            body :: Either Doc Expr -> [Expr]
+            body :: Either Doc (Expr ()) -> [Expr ()]
             body ast =
                 ast ^.. _Right._EOpen._2
 

@@ -101,5 +101,5 @@ makePrisms ''Constraint
 makeLenses ''Guard
 makePrisms ''Guard
 
-text :: Lens' Ident Text
+text :: Lens' (Ident a) Text
 text = identLabel

@@ -90,7 +90,7 @@ spec = do
                     fieldLabels result `shouldBe` ["fst", "snd"]
 
     describe "parsing a type declaration" $ do
-        let ctorsFromAst :: ParsedAst -> [Ctor]
+        let ctorsFromAst :: ParsedAst -> [Ctor ()]
             ctorsFromAst ast =
                 ast ^. _Right._AstDecl._DecDataType.dataTypeCtors
 
@@ -111,17 +111,16 @@ spec = do
                 ast ^.. to ctorsFromAst.traverse.ctorParams.traverse
                        .to typeIdentifiers._Just.each
 
-            typeIdentifiers :: Type -> Maybe [Text]
-            typeIdentifiers (TyVar i)       = Just [pprint i]
+            typeIdentifiers :: Type () -> Maybe [Text]
+            typeIdentifiers (TyVar _ i)     = Just [pprint i]
             typeIdentifiers TyForall {}     = Nothing
             typeIdentifiers TyConstraint {} = Nothing
             typeIdentifiers TyStructural {} = Nothing
-            typeIdentifiers (TyApp x y)     = concat <$> sequence [typeIdentifiers x, typeIdentifiers y]
+            typeIdentifiers (TyApp _ x y)   = concat <$> sequence [typeIdentifiers x, typeIdentifiers y]
 
-            typeIdentifiers (TyNominal t) =
-                Just [pprint t]
+            typeIdentifiers (TyNominal _ t) = Just [pprint t]
 
-            typeIdentifiers (TyArrow a b) = do
+            typeIdentifiers (TyArrow _ a b) = do
                 as <- typeIdentifiers a
                 bs <- typeIdentifiers b
                 pure (as <> bs)

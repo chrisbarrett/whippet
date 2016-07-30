@@ -1,10 +1,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE OverloadedStrings          #-}
--- |This module implements the lexing and parsing of the Whippet language.
+-- |This module implements the lexing and parsing of the Whippet language. The
+-- output of a successful parse is an AST annotated with source positions.
 module Language.Whippet.Parser (
     -- * Parser types
       module Language.Whippet.Parser.Types
+    , module Language.Whippet.Parser.HasPos
     -- |Custom parser type for the language, which handles the whitespace and
     -- comment rules of Whippet.
     , P
@@ -27,26 +29,28 @@ module Language.Whippet.Parser (
     , expr
     ) where
 
-import           Control.Applicative           (Alternative, (<|>))
-import           Control.Lens                  hiding (op)
-import           Control.Monad                 (MonadPlus)
-import           Control.Monad.Trans           (MonadIO)
-import qualified Data.Char                     as Char
-import qualified Data.List.NonEmpty            as NonEmpty
+import           Control.Applicative            (Alternative, (<|>))
+import           Control.Lens                   hiding (op)
+import           Control.Monad                  (MonadPlus)
+import           Control.Monad.Trans            (MonadIO)
+import qualified Data.Char                      as Char
+import qualified Data.List.NonEmpty             as NonEmpty
 import           Data.Semigroup
-import           Data.String                   (fromString)
-import           Data.Text                     (Text)
-import qualified Data.Text                     as Text
-import qualified Text.Parser.Expression        as Parser
-import qualified Text.Parser.LookAhead         as Parser
-import qualified Text.Parser.Token.Highlight   as Parser
-import qualified Text.Parser.Token.Style       as Parser
-import           Text.Trifecta                 hiding (braces, brackets, comma,
-                                                eof, ident, parens, parseString,
-                                                semi, stringLit)
-import qualified Text.Trifecta                 as Trifecta
-import qualified Text.Trifecta.Delta           as Trifecta
+import           Data.String                    (fromString)
+import           Data.Text                      (Text)
+import qualified Data.Text                      as Text
+import qualified Text.Parser.Expression         as Parser
+import qualified Text.Parser.LookAhead          as Parser
+import qualified Text.Parser.Token.Highlight    as Parser
+import qualified Text.Parser.Token.Style        as Parser
+import           Text.Trifecta                  hiding (braces, brackets, comma,
+                                                 eof, ident, parens,
+                                                 parseString, semi, stringLit)
+import qualified Text.Trifecta                  as Trifecta
+import qualified Text.Trifecta.Delta            as Trifecta
 
+import           Language.Whippet.Parser.HasPos
+import qualified Language.Whippet.Parser.HasPos as HasPos
 import           Language.Whippet.Parser.Types
 
 -- Custom parser
@@ -113,6 +117,8 @@ identStyle =
 
 -- Parser definitions
 
+type TopLevel = [AST Span]
+
 parseFile :: MonadIO m => FilePath -> m (Result TopLevel)
 parseFile =
     parseFromFileEx (runP topLevel)
@@ -126,7 +132,7 @@ topLevel = do
     whiteSpace
     many topLevelItem <* eof
 
-topLevelItem :: P AST
+topLevelItem :: P (AST Span)
 topLevelItem =
     choice [ AstOpen <$> open <?> "open"
            , AstModule <$> module' <?> "module"
@@ -137,7 +143,7 @@ topLevelItem =
 
 -- Top-level
 
-open :: P Open
+open :: P (Open Span)
 open = do
     reserved "open"
     i <- qualifiedModule
@@ -145,28 +151,28 @@ open = do
     h <- optional (reserved "hiding" *> parens (optional comma *> ident `sepBy` comma))
     pure (Open i a h)
 
-signature :: P Signature
+signature :: P (Signature Span)
 signature = do
     reserved "signature"
     i <- qualifiedModule
     b <- braces (many abstractDecl)
     pure (Signature i b)
 
-module' :: P Module
+module' :: P (Module Span)
 module' = do
     reserved "module"
     i <- qualifiedModule
     b <- braces (many topLevelItem)
     pure (Module i b)
 
-typeclass :: P Typeclass
+typeclass :: P (Typeclass Span)
 typeclass = do
     reserved "typeclass"
     i <- typeclassName
     b <- braces (many functionOrSig)
     pure (Typeclass i b)
 
-instance' :: P Instance
+instance' :: P (Instance Span)
 instance' = do
     reserved "instance"
     c <- qualifiedTypeclass
@@ -174,7 +180,7 @@ instance' = do
     b <- braces (many function)
     pure (Instance c t b)
 
-abstractDecl :: P Decl
+abstractDecl :: P (Decl Span)
 abstractDecl =
     choice [ absType, DecFunSig <$> functionSig ]
   where
@@ -184,7 +190,7 @@ abstractDecl =
         ps <- many typeParameter <?> "type parameter"
         pure (DecAbsType (AbsType i ps))
 
-declaration :: P Decl
+declaration :: P (Decl Span)
 declaration =
     parser <?> "declaration"
   where
@@ -201,7 +207,7 @@ declaration =
 
     -- Concrete and abstract types share the same prefix. Delay branching in the
     -- parser to improve error messages.
-    decType :: P Decl
+    decType :: P (Decl Span)
     decType = do
         reserved "type"
         id <- typeName
@@ -217,7 +223,7 @@ declaration =
         abstractType id tyArgs =
             pure (DecAbsType (AbsType id tyArgs))
 
-constructor :: P Ctor
+constructor :: P (Ctor Span)
 constructor =
     parser <?> "constructor"
   where
@@ -226,7 +232,7 @@ constructor =
         ts <- many typeRef
         pure (Ctor i ts)
 
-function :: P Function
+function :: P (Function Span)
 function = do
     reserved "let"
     i <- ident
@@ -236,7 +242,7 @@ function = do
     d <- functionBody
     pure (Function i ps t d)
 
-functionBody :: P Expr
+functionBody :: P (Expr Span)
 functionBody =
     choice [ ELit <$> recordLit            <* optional semi
            , fnLit                         <* optional semi
@@ -251,7 +257,7 @@ functionBody =
            , expr <* semi
            ]
 
-functionSig :: P FunctionSig
+functionSig :: P (FunctionSig Span)
 functionSig = do
     reserved "let"
     i <- ident
@@ -259,7 +265,7 @@ functionSig = do
     t <- typeRef
     pure (FunctionSig i t)
 
-functionOrSig :: P FnOrSig
+functionOrSig :: P (FnOrSig Span)
 functionOrSig = do
     reserved "let"
     i <- ident
@@ -286,7 +292,7 @@ functionOrSig = do
           Just t  -> choice [try equals *> commitFn, commitSig t]
 
 
-fnParam :: P FnParam
+fnParam :: P (FnParam Span)
 fnParam =
     parens paramWithTy <|> paramIdent
   where
@@ -300,7 +306,7 @@ fnParam =
 
 
 
-recordType :: P RecordType
+recordType :: P (RecordType Span)
 recordType = do
     reserved "record"
     i <- typeName
@@ -312,14 +318,10 @@ recordType = do
 
 -- Types
 
-typeRef :: P Type
+typeRef :: P (Type Span)
 typeRef =
     Parser.buildExpressionParser operators tyTerm <?> "type"
   where
-    operators = [ [Parser.Infix (pure TyApp) Parser.AssocLeft]
-                , [Parser.Infix (rarrow *> pure TyArrow) Parser.AssocRight]
-                ]
-
     tyTerm =
         choice [ parens typeRef
                , forallType
@@ -329,20 +331,38 @@ typeRef =
                , typeVariable
                ]
 
-forallType :: P Type
-forallType = do
-    reserved "forall"
-    binders <- NonEmpty.fromList <$> some typeParameter
-    dot
-    t <- typeRef
-    pure (TyForall binders t)
+    operators = [ [Parser.Infix appParser Parser.AssocLeft]
+                , [Parser.Infix (rarrow *> arrowParser) Parser.AssocRight]
+                ]
 
-constraintType :: P Type
+    -- KLUDGE: Getting the span is tricky in these operator parsers. Just use
+    -- the span of the first argument.
+
+    appParser = pure $ \t1 t2 ->
+        TyApp (HasPos.position t1) t1 t2
+
+    arrowParser = pure $ \t1 t2 ->
+        TyArrow (HasPos.position t1) t1 t2
+
+
+forallType :: P (Type Span)
+forallType = do
+    ((b, t) :~ p) <- spanned $ do
+        reserved "forall"
+        binders <- NonEmpty.fromList <$> some typeParameter
+        dot
+        t <- typeRef
+        pure (binders, t)
+
+    pure (TyForall p b t)
+
+constraintType :: P (Type Span)
 constraintType =
     (parens parser <|> parser) <?> "constraint"
   where
-    parser =
-        TyConstraint <$> try constraints <*> typeRef
+    parser = do
+        ((cs, t) :~ p) <- spanned $ (,) <$> try constraints <*> typeRef
+        pure (TyConstraint p cs t)
 
     constraints = do
         res <- NonEmpty.fromList <$> constraint `sepBy1` comma
@@ -354,30 +374,33 @@ constraintType =
         ps <- NonEmpty.fromList <$> some typeParameter
         pure (Constraint ctor ps)
 
-typeVariable :: P Type
-typeVariable =
-    TyVar <$> ident
+typeVariable :: P (Type Span)
+typeVariable = do
+    (i :~ s) <- spanned ident
+    pure (TyVar s i)
 
-structuralType :: P Type
-structuralType =
-    TyStructural <$> recordFields
+structuralType :: P (Type Span)
+structuralType = do
+    (fs :~ p) <- spanned recordFields
+    pure (TyStructural p fs)
 
-nominalType :: P Type
-nominalType =
-    TyNominal <$> qualifiedType
+nominalType :: P (Type Span)
+nominalType = do
+    (t :~ p) <- spanned qualifiedType
+    pure (TyNominal p t)
 
-recordFields :: P [Field]
+recordFields :: P [Field Span]
 recordFields =
     braces (optional comma *> field `sepBy1` comma)
   where
-    field :: P Field
+    field :: P (Field Span)
     field = do
         i <- ident <?> "field name"
         colon <?> "type annotation"
         t <- typeRef
         pure (Field i t)
 
-typeParameter :: P TypeParameter
+typeParameter :: P (TypeParameter Span)
 typeParameter = do
     let style = identStyle & styleStart .~ lower
     (s :~ span) <- spanned (Trifecta.ident style)
@@ -386,11 +409,11 @@ typeParameter = do
 
 -- Expressions
 
-expr :: P Expr
+expr :: P (Expr Span)
 expr = do
     e <- Parser.buildExpressionParser operators exprTerm <?> "expression"
     t <- exprTypeAnnotation
-    pure (maybe e (EAnnotation . Annotation e) t)
+    pure (maybe e (\t -> EAnnotation (Annotation (HasPos.position t) e t)) t)
   where
     operators = [ [Parser.Infix parseApp Parser.AssocLeft]
                 , [Parser.Infix parseOp Parser.AssocRight]
@@ -406,13 +429,13 @@ expr = do
 
 -- Expressions are a superset of the terms allowed in guards.
 
-exprTerm :: P Expr
+exprTerm :: P (Expr Span)
 exprTerm =
     choice [ guardTerm
            , EIf <$> ifThenElse
            ]
 
-guardTerm :: P Expr
+guardTerm :: P (Expr Span)
 guardTerm =
     choice [ parens expr
            , ELet <$> let'
@@ -434,21 +457,21 @@ guardTerm =
         pure (EOpen o b)
 
 
-charLit :: P Lit
+charLit :: P (Lit Span)
 charLit = LitChar <$> charLiteral
 
-recordLit :: P Lit
+recordLit :: P (Lit Span)
 recordLit =
     LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
   where
-    field :: P (Ident, Expr)
+    field :: P (Ident Span, Expr Span)
     field = do
         f <- ident
         colon <?> "field value"
         e <- expr
         pure (f, e)
 
-let' :: P Let
+let' :: P (Let Span)
 let' = do
     reserved "let"
     d <- discriminator
@@ -457,7 +480,7 @@ let' = do
     b <- expr
     pure (Let d e b)
 
-match :: P Match
+match :: P (Match Span)
 match = do
     reserved "match"
     e <- expr
@@ -465,7 +488,7 @@ match = do
     ps <- patterns
     pure (Match e ps)
 
-exprTypeAnnotation :: P (Maybe Type)
+exprTypeAnnotation :: P (Maybe (Type Span))
 exprTypeAnnotation = do
     c <- optional colon <?> "type annotation"
     case c of
@@ -475,7 +498,7 @@ exprTypeAnnotation = do
     tyParser = parens typeRef <|> nominalType <|> structuralType <|> typeVariable
 
 
-ifThenElse :: P If
+ifThenElse :: P (If Span)
 ifThenElse = do
     reserved "if"
     i <- expr
@@ -483,7 +506,7 @@ ifThenElse = do
     e <- reserved "else" *> expr
     pure (If i t e)
 
-fnLit :: P Expr
+fnLit :: P (Expr Span)
 fnLit = do
     reserved "fn"
     EFn <$> choice [bare, patterns]
@@ -492,14 +515,14 @@ fnLit = do
         p <- try pat
         pure [p]
 
-hole :: P Expr
+hole :: P (Expr Span)
 hole = do
     let holeStyle = identStyle & styleStart .~ (letter <|> char '_')
     (s :~ span) <- spanned (Trifecta.ident holeStyle)
     pure (EHole (Ident span s))
 
 
-numberLit :: P Lit
+numberLit :: P (Lit Span)
 numberLit = do
     n <- try (runUnspaced integerOrScientific)
     -- Inspect the next char in the stream to ensure unexpected suffixes are
@@ -510,10 +533,11 @@ numberLit = do
       else token (pure (either LitInt LitScientific n))
 
 
-stringLit :: P Lit
+stringLit :: P (Lit Span)
 stringLit =
     parser <?> "string"
   where
+    parser :: P (Lit Span)
     parser = token $ highlight Parser.StringLiteral $ do
         str <- char '"' *> (escapeSequence <|> anyChar) `manyTill` char '"'
         pure (LitString (Text.pack str))
@@ -531,7 +555,7 @@ stringLit =
           'b'  -> pure '\b'
           _    -> fail "Invalid escape sequence"
 
-listLiteral :: P Lit
+listLiteral :: P (Lit Span)
 listLiteral =
     parser <?> "list"
   where
@@ -541,33 +565,33 @@ listLiteral =
 
 -- Pattern matching
 
-patterns :: P [Pat]
+patterns :: P [Pat Span]
 patterns = braces (optional pipe *> pat `sepBy` pipe)
 
-pat :: P Pat
+pat :: P (Pat Span)
 pat = do
     d <- discriminator
     g <- optional guard
     e <- rarrow *> expr
     pure (Pat d g e)
 
-guard :: P Guard
+guard :: P (Guard Span)
 guard =
     choice [ IfGuard <$> (reserved "if" *> guardExpr)
            , UnlessGuard <$> (reserved "unless" *> guardExpr)
            ]
      <?> "pattern guard"
   where
-    guardExpr :: P Expr
+    guardExpr :: P (Expr Span)
     guardExpr = do
         e <- Parser.buildExpressionParser operators guardTerm <?> "expression"
         t <- exprTypeAnnotation
-        pure (maybe e (EAnnotation . Annotation e) t)
+        pure (maybe e (\t -> EAnnotation (Annotation (HasPos.position t) e t)) t)
       where
         operators = [[Parser.Infix parseApp Parser.AssocLeft]]
         parseApp = pure (\x y -> EApp (App x y))
 
-discriminator :: P Discriminator
+discriminator :: P (Discriminator Span)
 discriminator = do
     e <- Parser.buildExpressionParser operators discTerm <?> "discriminator"
     t <- exprTypeAnnotation
@@ -599,7 +623,7 @@ discriminator = do
 
 -- Identifiers
 
-ctorName :: P Ident
+ctorName :: P (Ident Span)
 ctorName =
     parser <?> "constructor name"
   where
@@ -608,32 +632,32 @@ ctorName =
         (s :~ span) <- spanned (Trifecta.ident style)
         pure (Ident span s)
 
-typeclassName :: P Ident
+typeclassName :: P (Ident Span)
 typeclassName =
     moduleName
     <?> "typeclass name"
 
-qualifiedTypeclass :: P QualId
+qualifiedTypeclass :: P (QualId Span)
 qualifiedTypeclass = qualifiedModule <?> "typeclass name"
 
-qualifiedModule :: P QualId
+qualifiedModule :: P (QualId Span)
 qualifiedModule =
     parser <?> "module ID"
   where
     parser = QualId . NonEmpty.fromList <$> moduleName `sepBy1` dot
 
 
-qualifiedType :: P QualId
+qualifiedType :: P (QualId Span)
 qualifiedType =
     parser <?> "type ID"
   where
     parser = QualId . NonEmpty.fromList <$> typeName `sepBy1` dot
 
-typeName :: P Ident
+typeName :: P (Ident Span)
 typeName = ctorName
     <?> "type name"
 
-moduleName :: P Ident
+moduleName :: P (Ident Span)
 moduleName = do
     let style =
             identStyle
@@ -643,7 +667,7 @@ moduleName = do
     pure (Ident span s)
 
 -- TODO: Accept qualified var references: (modid '.')* id
-ident :: P Ident
+ident :: P (Ident Span)
 ident = do
     (s :~ span) <- spanned (Trifecta.ident identStyle)
     pure (Ident span s)

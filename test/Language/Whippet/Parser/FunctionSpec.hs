@@ -122,17 +122,17 @@ spec = do
                     result `shouldSatisfy` is (_Right._AstDecl._DecFun)
                 when (is _Right result) assertions
 
-            fnParams :: ParsedAst -> [FnParam]
+            fnParams :: ParsedAst -> [FnParam ()]
             fnParams ast =
                 ast ^. _Right._AstDecl._DecFun.functionParams
 
-            param :: Text -> FnParam
+            param :: Text -> FnParam ()
             param n = FnParam (ident n) Nothing
 
-            param' :: Text -> Type -> FnParam
+            param' :: Text -> Type () -> FnParam ()
             param' n = FnParam (ident n) . Just
 
-            fnType :: ParsedAst -> [Type]
+            fnType :: ParsedAst -> [Type ()]
             fnType ast =
                 ast ^.. _Right._AstDecl._DecFun.functionType._Just
 
@@ -144,7 +144,7 @@ spec = do
             fnName ast =
                 ast ^. _Right._AstDecl._DecFun.functionIdent.pprint'
 
-            fnBody :: ParsedAst -> [Expr]
+            fnBody :: ParsedAst -> [Expr ()]
             fnBody ast =
                 ast ^.. _Right._AstDecl._DecFun.functionBody
 

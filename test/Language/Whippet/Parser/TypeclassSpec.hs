@@ -19,7 +19,7 @@ spec :: Spec
 spec = do
 
     describe "parsing typeclass declarations" $ do
-        let body :: ParsedAst -> [FnOrSig]
+        let body :: ParsedAst -> [FnOrSig ()]
             body ast =
                 ast ^. _Right._AstDecl._DecTypeclass.typeclassDecls
 
@@ -37,7 +37,7 @@ spec = do
                       .to (getIdent.toDecl)
                       ._Just
 
-            toDecl :: FnOrSig -> Decl
+            toDecl :: FnOrSig () -> Decl ()
             toDecl (Fn f)  = DecFun f
             toDecl (Sig f) = DecFunSig f
 
@@ -61,7 +61,7 @@ spec = do
                     declarations result `shouldBe` ["foo", "bar"]
 
     describe "parsing typeclass instances" $ do
-        let body :: ParsedAst -> [Function]
+        let body :: ParsedAst -> [Function ()]
             body ast =
                 ast ^. _Right._AstDecl._DecInstance.instanceDecls
 

@@ -17,6 +17,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Language.Whippet.Parser
                      , Language.Whippet.Parser.Lenses
+                     , Language.Whippet.Parser.HasPos
                      , Language.Whippet.Parser.Types
                      , Language.Whippet.Typecheck
                      , Language.Whippet.Typecheck.Errors
@@ -33,7 +34,6 @@ library
                      , semigroups
                      , text
                      , trifecta
-                     , validation
 
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -56,14 +56,15 @@ test-suite whippet-test
   build-depends:       base
                      , ansi-wl-pprint
                      , bytestring
+                     , containers
                      , hspec
                      , utf8-string
                      , filepath
                      , lens
+                     , mtl
                      , semigroups
                      , text
                      , trifecta
-                     , validation
                      , whippet
 
 
