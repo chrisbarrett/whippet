@@ -14,9 +14,8 @@ import qualified Data.Foldable                     as Foldable
 import           Data.Sequence                     (Seq)
 import qualified Data.Sequence                     as Seq
 import qualified Data.Text                         as Text
-import qualified Language.Whippet.Parser.HasPos    as HasPos
+import qualified Language.Whippet.Parser           as Parser
 import           Language.Whippet.Parser.Lenses
-import qualified Language.Whippet.Parser.Types     as Parser
 import           Language.Whippet.Typecheck.CheckM
 import           Language.Whippet.Typecheck.Errors
 import           Language.Whippet.Typecheck.Lenses
@@ -66,7 +65,7 @@ class Checkable a where
     check :: a -> TypeCheck
 
 
-instance Checkable (Parser.Expr HasPos.Pos) where
+instance Checkable (Parser.Expr Parser.Pos) where
     check e =
         case e of
           -- An annotation asserts that an expression has an expected type, then
@@ -74,7 +73,7 @@ instance Checkable (Parser.Expr HasPos.Pos) where
           Parser.EAnnotation a -> do
               t1 <- resolve (a ^. annotationType)
               t2 <- check (a ^. annotationExpr)
-              unify HasPos.emptyPos t1 t2
+              unify Parser.emptyPos t1 t2
 
           Parser.ELit l -> check l
 
@@ -88,7 +87,7 @@ instance Checkable (Parser.Expr HasPos.Pos) where
           -- Parser.EOpen o e -> undefined
 
 
-instance Checkable (Parser.Lit HasPos.Pos) where
+instance Checkable (Parser.Lit Parser.Pos) where
 
     check Parser.LitInt {} =
         success (TyNominal "Language.Whippet.Prim.Int")
@@ -113,5 +112,11 @@ instance Checkable (Parser.Lit HasPos.Pos) where
     -- Otherwise a list must have values of a homogeneous type.
     check (Parser.LitList (x : xs)) = do
         t1 <- check x
-        Foldable.traverse_ (\x -> check x >>= unify HasPos.emptyPos t1) xs
+        Foldable.traverse_ (\x -> check x >>= unify Parser.emptyPos t1) xs
         success (TyApp (TyNominal "Language.Whippet.Prim.Seq") t1)
+
+instance Checkable Parser.TopLevel where
+    check = undefined
+
+instance Checkable (Parser.AST Parser.Pos) where
+    check = undefined

@@ -23,6 +23,7 @@ module Language.Whippet.Parser (
 
     -- |Top-down parser for a Whippet source file.
     , topLevel
+    , TopLevel
     -- |Parser for a single toplevel entry in a Whippet source file.
     , topLevelItem
     -- |Parser for expressions.
