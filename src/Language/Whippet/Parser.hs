@@ -117,7 +117,7 @@ identStyle =
 
 -- Parser definitions
 
-type TopLevel = [AST Span]
+type TopLevel = [AST Pos]
 
 parseFile :: MonadIO m => FilePath -> m (Result TopLevel)
 parseFile =
@@ -132,7 +132,7 @@ topLevel = do
     whiteSpace
     many topLevelItem <* eof
 
-topLevelItem :: P (AST Span)
+topLevelItem :: P (AST Pos)
 topLevelItem =
     choice [ AstOpen <$> open <?> "open"
            , AstModule <$> module' <?> "module"
@@ -143,7 +143,7 @@ topLevelItem =
 
 -- Top-level
 
-open :: P (Open Span)
+open :: P (Open Pos)
 open = do
     reserved "open"
     i <- qualifiedModule
@@ -151,28 +151,28 @@ open = do
     h <- optional (reserved "hiding" *> parens (optional comma *> ident `sepBy` comma))
     pure (Open i a h)
 
-signature :: P (Signature Span)
+signature :: P (Signature Pos)
 signature = do
     reserved "signature"
     i <- qualifiedModule
     b <- braces (many abstractDecl)
     pure (Signature i b)
 
-module' :: P (Module Span)
+module' :: P (Module Pos)
 module' = do
     reserved "module"
     i <- qualifiedModule
     b <- braces (many topLevelItem)
     pure (Module i b)
 
-typeclass :: P (Typeclass Span)
+typeclass :: P (Typeclass Pos)
 typeclass = do
     reserved "typeclass"
     i <- typeclassName
     b <- braces (many functionOrSig)
     pure (Typeclass i b)
 
-instance' :: P (Instance Span)
+instance' :: P (Instance Pos)
 instance' = do
     reserved "instance"
     c <- qualifiedTypeclass
@@ -180,7 +180,7 @@ instance' = do
     b <- braces (many function)
     pure (Instance c t b)
 
-abstractDecl :: P (Decl Span)
+abstractDecl :: P (Decl Pos)
 abstractDecl =
     choice [ absType, DecFunSig <$> functionSig ]
   where
@@ -190,7 +190,7 @@ abstractDecl =
         ps <- many typeParameter <?> "type parameter"
         pure (DecAbsType (AbsType i ps))
 
-declaration :: P (Decl Span)
+declaration :: P (Decl Pos)
 declaration =
     parser <?> "declaration"
   where
@@ -207,7 +207,7 @@ declaration =
 
     -- Concrete and abstract types share the same prefix. Delay branching in the
     -- parser to improve error messages.
-    decType :: P (Decl Span)
+    decType :: P (Decl Pos)
     decType = do
         reserved "type"
         id <- typeName
@@ -223,7 +223,7 @@ declaration =
         abstractType id tyArgs =
             pure (DecAbsType (AbsType id tyArgs))
 
-constructor :: P (Ctor Span)
+constructor :: P (Ctor Pos)
 constructor =
     parser <?> "constructor"
   where
@@ -232,7 +232,7 @@ constructor =
         ts <- many typeRef
         pure (Ctor i ts)
 
-function :: P (Function Span)
+function :: P (Function Pos)
 function = do
     reserved "let"
     i <- ident
@@ -242,7 +242,7 @@ function = do
     d <- functionBody
     pure (Function i ps t d)
 
-functionBody :: P (Expr Span)
+functionBody :: P (Expr Pos)
 functionBody =
     choice [ ELit <$> recordLit            <* optional semi
            , fnLit                         <* optional semi
@@ -257,7 +257,7 @@ functionBody =
            , expr <* semi
            ]
 
-functionSig :: P (FunctionSig Span)
+functionSig :: P (FunctionSig Pos)
 functionSig = do
     reserved "let"
     i <- ident
@@ -265,7 +265,7 @@ functionSig = do
     t <- typeRef
     pure (FunctionSig i t)
 
-functionOrSig :: P (FnOrSig Span)
+functionOrSig :: P (FnOrSig Pos)
 functionOrSig = do
     reserved "let"
     i <- ident
@@ -292,7 +292,7 @@ functionOrSig = do
           Just t  -> choice [try equals *> commitFn, commitSig t]
 
 
-fnParam :: P (FnParam Span)
+fnParam :: P (FnParam Pos)
 fnParam =
     parens paramWithTy <|> paramIdent
   where
@@ -306,7 +306,7 @@ fnParam =
 
 
 
-recordType :: P (RecordType Span)
+recordType :: P (RecordType Pos)
 recordType = do
     reserved "record"
     i <- typeName
@@ -318,7 +318,7 @@ recordType = do
 
 -- Types
 
-typeRef :: P (Type Span)
+typeRef :: P (Type Pos)
 typeRef =
     Parser.buildExpressionParser operators tyTerm <?> "type"
   where
@@ -345,7 +345,7 @@ typeRef =
         TyArrow (HasPos.position t1) t1 t2
 
 
-forallType :: P (Type Span)
+forallType :: P (Type Pos)
 forallType = do
     ((b, t) :~ p) <- spanned $ do
         reserved "forall"
@@ -356,7 +356,7 @@ forallType = do
 
     pure (TyForall p b t)
 
-constraintType :: P (Type Span)
+constraintType :: P (Type Pos)
 constraintType =
     (parens parser <|> parser) <?> "constraint"
   where
@@ -374,33 +374,33 @@ constraintType =
         ps <- NonEmpty.fromList <$> some typeParameter
         pure (Constraint ctor ps)
 
-typeVariable :: P (Type Span)
+typeVariable :: P (Type Pos)
 typeVariable = do
     (i :~ s) <- spanned ident
     pure (TyVar s i)
 
-structuralType :: P (Type Span)
+structuralType :: P (Type Pos)
 structuralType = do
     (fs :~ p) <- spanned recordFields
     pure (TyStructural p fs)
 
-nominalType :: P (Type Span)
+nominalType :: P (Type Pos)
 nominalType = do
     (t :~ p) <- spanned qualifiedType
     pure (TyNominal p t)
 
-recordFields :: P [Field Span]
+recordFields :: P [Field Pos]
 recordFields =
     braces (optional comma *> field `sepBy1` comma)
   where
-    field :: P (Field Span)
+    field :: P (Field Pos)
     field = do
         i <- ident <?> "field name"
         colon <?> "type annotation"
         t <- typeRef
         pure (Field i t)
 
-typeParameter :: P (TypeParameter Span)
+typeParameter :: P (TypeParameter Pos)
 typeParameter = do
     let style = identStyle & styleStart .~ lower
     (s :~ span) <- spanned (Trifecta.ident style)
@@ -409,7 +409,7 @@ typeParameter = do
 
 -- Expressions
 
-expr :: P (Expr Span)
+expr :: P (Expr Pos)
 expr = do
     e <- Parser.buildExpressionParser operators exprTerm <?> "expression"
     t <- exprTypeAnnotation
@@ -429,13 +429,13 @@ expr = do
 
 -- Expressions are a superset of the terms allowed in guards.
 
-exprTerm :: P (Expr Span)
+exprTerm :: P (Expr Pos)
 exprTerm =
     choice [ guardTerm
            , EIf <$> ifThenElse
            ]
 
-guardTerm :: P (Expr Span)
+guardTerm :: P (Expr Pos)
 guardTerm =
     choice [ parens expr
            , ELet <$> let'
@@ -457,21 +457,21 @@ guardTerm =
         pure (EOpen o b)
 
 
-charLit :: P (Lit Span)
+charLit :: P (Lit Pos)
 charLit = LitChar <$> charLiteral
 
-recordLit :: P (Lit Span)
+recordLit :: P (Lit Pos)
 recordLit =
     LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
   where
-    field :: P (Ident Span, Expr Span)
+    field :: P (Ident Pos, Expr Pos)
     field = do
         f <- ident
         colon <?> "field value"
         e <- expr
         pure (f, e)
 
-let' :: P (Let Span)
+let' :: P (Let Pos)
 let' = do
     reserved "let"
     d <- discriminator
@@ -480,7 +480,7 @@ let' = do
     b <- expr
     pure (Let d e b)
 
-match :: P (Match Span)
+match :: P (Match Pos)
 match = do
     reserved "match"
     e <- expr
@@ -488,7 +488,7 @@ match = do
     ps <- patterns
     pure (Match e ps)
 
-exprTypeAnnotation :: P (Maybe (Type Span))
+exprTypeAnnotation :: P (Maybe (Type Pos))
 exprTypeAnnotation = do
     c <- optional colon <?> "type annotation"
     case c of
@@ -498,7 +498,7 @@ exprTypeAnnotation = do
     tyParser = parens typeRef <|> nominalType <|> structuralType <|> typeVariable
 
 
-ifThenElse :: P (If Span)
+ifThenElse :: P (If Pos)
 ifThenElse = do
     reserved "if"
     i <- expr
@@ -506,7 +506,7 @@ ifThenElse = do
     e <- reserved "else" *> expr
     pure (If i t e)
 
-fnLit :: P (Expr Span)
+fnLit :: P (Expr Pos)
 fnLit = do
     reserved "fn"
     EFn <$> choice [bare, patterns]
@@ -515,14 +515,14 @@ fnLit = do
         p <- try pat
         pure [p]
 
-hole :: P (Expr Span)
+hole :: P (Expr Pos)
 hole = do
     let holeStyle = identStyle & styleStart .~ (letter <|> char '_')
     (s :~ span) <- spanned (Trifecta.ident holeStyle)
     pure (EHole (Ident span s))
 
 
-numberLit :: P (Lit Span)
+numberLit :: P (Lit Pos)
 numberLit = do
     n <- try (runUnspaced integerOrScientific)
     -- Inspect the next char in the stream to ensure unexpected suffixes are
@@ -533,11 +533,11 @@ numberLit = do
       else token (pure (either LitInt LitScientific n))
 
 
-stringLit :: P (Lit Span)
+stringLit :: P (Lit Pos)
 stringLit =
     parser <?> "string"
   where
-    parser :: P (Lit Span)
+    parser :: P (Lit Pos)
     parser = token $ highlight Parser.StringLiteral $ do
         str <- char '"' *> (escapeSequence <|> anyChar) `manyTill` char '"'
         pure (LitString (Text.pack str))
@@ -555,7 +555,7 @@ stringLit =
           'b'  -> pure '\b'
           _    -> fail "Invalid escape sequence"
 
-listLiteral :: P (Lit Span)
+listLiteral :: P (Lit Pos)
 listLiteral =
     parser <?> "list"
   where
@@ -565,24 +565,24 @@ listLiteral =
 
 -- Pattern matching
 
-patterns :: P [Pat Span]
+patterns :: P [Pat Pos]
 patterns = braces (optional pipe *> pat `sepBy` pipe)
 
-pat :: P (Pat Span)
+pat :: P (Pat Pos)
 pat = do
     d <- discriminator
     g <- optional guard
     e <- rarrow *> expr
     pure (Pat d g e)
 
-guard :: P (Guard Span)
+guard :: P (Guard Pos)
 guard =
     choice [ IfGuard <$> (reserved "if" *> guardExpr)
            , UnlessGuard <$> (reserved "unless" *> guardExpr)
            ]
      <?> "pattern guard"
   where
-    guardExpr :: P (Expr Span)
+    guardExpr :: P (Expr Pos)
     guardExpr = do
         e <- Parser.buildExpressionParser operators guardTerm <?> "expression"
         t <- exprTypeAnnotation
@@ -591,7 +591,7 @@ guard =
         operators = [[Parser.Infix parseApp Parser.AssocLeft]]
         parseApp = pure (\x y -> EApp (App x y))
 
-discriminator :: P (Discriminator Span)
+discriminator :: P (Discriminator Pos)
 discriminator = do
     e <- Parser.buildExpressionParser operators discTerm <?> "discriminator"
     t <- exprTypeAnnotation
@@ -623,7 +623,7 @@ discriminator = do
 
 -- Identifiers
 
-ctorName :: P (Ident Span)
+ctorName :: P (Ident Pos)
 ctorName =
     parser <?> "constructor name"
   where
@@ -632,32 +632,32 @@ ctorName =
         (s :~ span) <- spanned (Trifecta.ident style)
         pure (Ident span s)
 
-typeclassName :: P (Ident Span)
+typeclassName :: P (Ident Pos)
 typeclassName =
     moduleName
     <?> "typeclass name"
 
-qualifiedTypeclass :: P (QualId Span)
+qualifiedTypeclass :: P (QualId Pos)
 qualifiedTypeclass = qualifiedModule <?> "typeclass name"
 
-qualifiedModule :: P (QualId Span)
+qualifiedModule :: P (QualId Pos)
 qualifiedModule =
     parser <?> "module ID"
   where
     parser = QualId . NonEmpty.fromList <$> moduleName `sepBy1` dot
 
 
-qualifiedType :: P (QualId Span)
+qualifiedType :: P (QualId Pos)
 qualifiedType =
     parser <?> "type ID"
   where
     parser = QualId . NonEmpty.fromList <$> typeName `sepBy1` dot
 
-typeName :: P (Ident Span)
+typeName :: P (Ident Pos)
 typeName = ctorName
     <?> "type name"
 
-moduleName :: P (Ident Span)
+moduleName :: P (Ident Pos)
 moduleName = do
     let style =
             identStyle
@@ -667,7 +667,7 @@ moduleName = do
     pure (Ident span s)
 
 -- TODO: Accept qualified var references: (modid '.')* id
-ident :: P (Ident Span)
+ident :: P (Ident Pos)
 ident = do
     (s :~ span) <- spanned (Trifecta.ident identStyle)
     pure (Ident span s)
