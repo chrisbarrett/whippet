@@ -106,14 +106,14 @@ data Match a = Match {
     deriving (Functor, Eq, Ord, Show)
 
 data Annotation a = Annotation {
-      _annotationPos  :: a
+      _annotationPos  :: Maybe a
     , _annotationExpr :: Expr a
     , _annotationType :: Type a
     }
     deriving (Functor, Eq, Ord, Show)
 
 data Ident a = Ident {
-      _identPos   :: a
+      _identPos   :: Maybe a
     , _identLabel :: Text
     }
     deriving (Functor, Ord)
@@ -131,13 +131,13 @@ data Field a = Field {
     deriving (Functor, Eq, Ord, Show)
 
 data Type a
-    = TyNominal    a (QualId a)
-    | TyVar        a (Ident a)
-    | TyStructural a [Field a]
-    | TyApp        a (Type a) (Type a)
-    | TyArrow      a (Type a) (Type a)
-    | TyForall     a (NonEmpty (TypeParameter a)) (Type a)
-    | TyConstraint a (NonEmpty (Constraint a)) (Type a)
+    = TyNominal    (Maybe a) (QualId a)
+    | TyVar        (Maybe a) (Ident a)
+    | TyStructural (Maybe a) [Field a]
+    | TyApp        (Maybe a) (Type a) (Type a)
+    | TyArrow      (Maybe a) (Type a) (Type a)
+    | TyForall     (Maybe a) (NonEmpty (TypeParameter a)) (Type a)
+    | TyConstraint (Maybe a) (NonEmpty (Constraint a)) (Type a)
     deriving (Functor, Eq, Ord, Show)
 
 data Constraint a = Constraint {

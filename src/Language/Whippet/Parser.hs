@@ -354,7 +354,7 @@ forallType = do
         t <- typeRef
         pure (binders, t)
 
-    pure (TyForall p b t)
+    pure (TyForall (Just p) b t)
 
 constraintType :: P (Type Pos)
 constraintType =
@@ -362,7 +362,7 @@ constraintType =
   where
     parser = do
         ((cs, t) :~ p) <- spanned $ (,) <$> try constraints <*> typeRef
-        pure (TyConstraint p cs t)
+        pure (TyConstraint (Just p) cs t)
 
     constraints = do
         res <- NonEmpty.fromList <$> constraint `sepBy1` comma
@@ -377,17 +377,17 @@ constraintType =
 typeVariable :: P (Type Pos)
 typeVariable = do
     (i :~ s) <- spanned ident
-    pure (TyVar s i)
+    pure (TyVar (Just s) i)
 
 structuralType :: P (Type Pos)
 structuralType = do
     (fs :~ p) <- spanned recordFields
-    pure (TyStructural p fs)
+    pure (TyStructural (Just p) fs)
 
 nominalType :: P (Type Pos)
 nominalType = do
     (t :~ p) <- spanned qualifiedType
-    pure (TyNominal p t)
+    pure (TyNominal (Just p) t)
 
 recordFields :: P [Field Pos]
 recordFields =
@@ -404,7 +404,7 @@ typeParameter :: P (TypeParameter Pos)
 typeParameter = do
     let style = identStyle & styleStart .~ lower
     (s :~ span) <- spanned (Trifecta.ident style)
-    pure (TypeParameter (Ident span s))
+    pure (TypeParameter (Ident (Just span) s))
 
 
 -- Expressions
@@ -423,7 +423,7 @@ expr = do
 
     parseOp = do
         (s :~ span) <- spanned $ token (some (oneOf "<>/+-^.=!~@"))
-        let op = EVar (Ident span (Text.pack s))
+        let op = EVar (Ident (Just span) (Text.pack s))
         pure $ \x y -> EApp (App (EApp (App op x)) y)
 
 
@@ -519,7 +519,7 @@ hole :: P (Expr Pos)
 hole = do
     let holeStyle = identStyle & styleStart .~ (letter <|> char '_')
     (s :~ span) <- spanned (Trifecta.ident holeStyle)
-    pure (EHole (Ident span s))
+    pure (EHole (Ident (Just span) s))
 
 
 numberLit :: P (Lit Pos)
@@ -614,7 +614,7 @@ discriminator = do
     dwildcard = do
         let wildcardStyle = identStyle & styleStart .~ (letter <|> char '_')
         (s :~ span) <- spanned (Trifecta.ident wildcardStyle) <?> "wildcard"
-        pure (DWildcard (Ident span s))
+        pure (DWildcard (Ident (Just span) s))
 
     operators = [ [Parser.Infix (reserved "as" *> pure DAs) Parser.AssocLeft]
                 , [Parser.Infix (pure DApp) Parser.AssocLeft]
@@ -630,7 +630,7 @@ ctorName =
     parser = do
         let style = identStyle & styleStart .~ upper
         (s :~ span) <- spanned (Trifecta.ident style)
-        pure (Ident span s)
+        pure (Ident (Just span) s)
 
 typeclassName :: P (Ident Pos)
 typeclassName =
@@ -664,13 +664,13 @@ moduleName = do
                & styleStart  .~ upper
                & styleLetter .~ (alphaNum <|> oneOf "_")
     (s :~ span) <- spanned (Trifecta.ident style)
-    pure (Ident span s)
+    pure (Ident (Just span) s)
 
 -- TODO: Accept qualified var references: (modid '.')* id
 ident :: P (Ident Pos)
 ident = do
     (s :~ span) <- spanned (Trifecta.ident identStyle)
-    pure (Ident span s)
+    pure (Ident (Just span) s)
 
 reserved :: String -> P ()
 reserved s = reserve identStyle s <?> s

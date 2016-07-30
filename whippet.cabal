@@ -16,10 +16,11 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Whippet.Parser
-                     , Language.Whippet.Parser.Lenses
                      , Language.Whippet.Parser.HasPos
+                     , Language.Whippet.Parser.Lenses
                      , Language.Whippet.Parser.Types
                      , Language.Whippet.Typecheck
+                     , Language.Whippet.Typecheck.CheckM
                      , Language.Whippet.Typecheck.Errors
                      , Language.Whippet.Typecheck.Lenses
                      , Language.Whippet.Typecheck.Types
@@ -62,19 +63,20 @@ test-suite whippet-test
                      , filepath
                      , lens
                      , mtl
+                     , scientific
                      , semigroups
                      , text
                      , trifecta
                      , whippet
 
 
-  other-modules:       Language.Whippet.PPrint
-                     , Language.Whippet.Parser.ExprSpec
+  other-modules:       Language.Whippet.Parser.ExprSpec
                      , Language.Whippet.Parser.FunctionSpec
                      , Language.Whippet.Parser.ParseUtils
                      , Language.Whippet.Parser.ToplevelSpec
                      , Language.Whippet.Parser.TypeclassSpec
                      , Language.Whippet.Parser.TypesSpec
+                     , Language.Whippet.PPrint
                      , Paths_whippet
 
   hs-source-dirs:      test

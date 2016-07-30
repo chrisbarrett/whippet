@@ -8,6 +8,7 @@ import           Control.Lens
 import           Control.Monad                  (when)
 import           Data.ByteString.Internal       (ByteString)
 import           Data.Monoid                    ((<>))
+import           Data.Scientific    (Scientific)
 import           Data.String                    (fromString)
 import           Data.Text                      (Text)
 import           Language.Whippet.Parser
@@ -55,29 +56,32 @@ parseFile name = do
 eraseSpans :: AST a -> AST ()
 eraseSpans = fmap (const ())
 
-emptySpan :: Trifecta.Span
-emptySpan = Trifecta.Span mempty mempty mempty
-
 ident :: Text -> Ident ()
-ident = Ident ()
+ident = Ident (pure ())
 
 nominalType :: Text -> Type ()
-nominalType = TyNominal () . QualId . pure . ident
+nominalType = TyNominal (pure ()) . QualId . pure . ident
 
 tyVar :: Text -> Type ()
-tyVar = TyVar () . ident
+tyVar = TyVar (pure ()) . ident
 
-int :: Integer -> Expr a
+int :: Integer -> Expr ()
 int = ELit . LitInt
 
-eann :: Expr () -> Type () -> Expr ()
-eann e t = EAnnotation (Annotation () e t)
-
 var :: Text -> Expr ()
-var = EVar . Ident ()
+var = EVar . Ident (pure ())
 
 str :: Text -> Expr ()
 str = ELit . LitString
+
+char :: Char -> Expr ()
+char = ELit . LitChar
+
+list :: [Expr ()] -> Expr ()
+list = ELit . LitList
+
+scientific :: Scientific -> Expr ()
+scientific = ELit . LitScientific
 
 eapp :: Expr () -> Expr () -> Expr ()
 eapp x y = EApp (App x y)

@@ -8,6 +8,7 @@ import           Data.Text
 data Type
     = TyNominal Text
     | TyVar Text
+    | TyApp Type Type
     | TyDiverge
     deriving (Show, Eq, Ord)
 

@@ -1,72 +1,63 @@
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Whippet.Typecheck (
       module Language.Whippet.Typecheck.Errors
     , module Language.Whippet.Typecheck.Lenses
     , module Language.Whippet.Typecheck.Types
     , Checkable (..)
     , TypeCheck
-    , Check
-    , toEither
+    , typecheck
     ) where
 
 import           Control.Lens
-import qualified Control.Monad.State               as State
+import qualified Data.Foldable                     as Foldable
 import           Data.Sequence                     (Seq)
 import qualified Data.Sequence                     as Seq
-import           Language.Whippet.Parser.HasPos
+import qualified Data.Text                         as Text
+import qualified Language.Whippet.Parser.HasPos    as HasPos
 import           Language.Whippet.Parser.Lenses
 import qualified Language.Whippet.Parser.Types     as Parser
+import           Language.Whippet.Typecheck.CheckM
 import           Language.Whippet.Typecheck.Errors
 import           Language.Whippet.Typecheck.Lenses
 import           Language.Whippet.Typecheck.Types
 import qualified Text.Trifecta                     as Trifecta
 
--- * Type-checking monad
-
--- |The type checking monad accumulates errors.
-newtype Check a = Check {unCheck :: State.State (Seq Err) a}
-    deriving (Functor, Applicative, Monad, State.MonadState (Seq Err))
-
-type TypeCheck = Check Type
-
--- |Convert a type checking result to an 'Either'. Return 'Right' if there were
--- no errors, otherwise left.
-toEither :: Check a -> Either (Seq Err) a
-toEither (Check c) =
-    let (t, errs) = State.runState c mempty
-    in
-      if Seq.null errs
-        then Right t
-        else Left errs
-
--- |Add a type error to the current type checking context and mark a divergence.
-failure :: Err -> TypeCheck
-failure e = do
-    State.modify (|> e)
-    pure TyDiverge
+type TypeCheck = CheckM Type
 
 resolve :: Parser.Type a -> TypeCheck
-resolve = undefined
+resolve (Parser.TyNominal _ (Parser.QualId path)) =
+    let joined = Text.intercalate "." (path ^.. traverse.identLabel)
+    in pure (TyNominal joined)
 
 -- |Return the first of the two types if they unify, otherwise add a type error
 -- to the type checking context and return a divergence marker.
 unify :: Trifecta.Span -> Type -> Type -> TypeCheck
-unify p t1 t2 =
-    if t1 == t2
-      then
-        pure t1
-      else
-        unificationError p t1 t2
 
+-- Divergences are subsumed by the expected type in order to continue
+-- type-checking.
+unify _ t TyDiverge = success t
+unify _ TyDiverge t = success t
+
+unify p t1 t2
+    | t1 == t2 = success t1
+    | otherwise = unificationError p t1 t2
   where
-    unificationError :: Trifecta.Span -> Type -> Type -> TypeCheck
     unificationError s t1 t2 = failure (Err s e)
         where
           e = ErrorUnification (UnificationError t1 t2)
 
 -- * Type-checker
+
+-- |Run the type checker.
+typecheck :: Checkable a => a -> Either (Seq Err) Type
+typecheck c =
+    let (t, state) = runCheckM (check c)
+        errs = state ^. checkStateErrs
+    in
+      if Seq.null errs
+        then Right t
+        else Left errs
 
 -- |The 'Checkable' class implements the type-checking algorithm. If
 -- type-checking fails, the result is a divergence marker.
@@ -74,21 +65,53 @@ unify p t1 t2 =
 class Checkable a where
     check :: a -> TypeCheck
 
-instance Checkable (Parser.Expr Pos) where
 
-    -- An annotation asserts that an expression has an expected type, then
-    -- propagates the type specified in the annotation.
-    check (Parser.EAnnotation a) = do
-        t1 <- resolve (a ^. annotationType)
-        t2 <- check (a ^. annotationExpr)
-        unify (position a) t1 t2
+instance Checkable (Parser.Expr HasPos.Pos) where
+    check e =
+        case e of
+          -- An annotation asserts that an expression has an expected type, then
+          -- propagates the type specified in the annotation.
+          Parser.EAnnotation a -> do
+              t1 <- resolve (a ^. annotationType)
+              t2 <- check (a ^. annotationExpr)
+              unify HasPos.emptyPos t1 t2
 
-    check (Parser.EApp a) = undefined
-    check (Parser.EHole i) = undefined
-    check (Parser.EIf i) = undefined
-    check (Parser.EFn ps) = undefined
-    check (Parser.ELet l) = undefined
-    check (Parser.ELit l) = undefined
-    check (Parser.EMatch m) = undefined
-    check (Parser.EVar i) = undefined
-    check (Parser.EOpen o e) = undefined
+          Parser.ELit l -> check l
+
+          -- Parser.EApp a -> undefined
+          -- Parser.EHole i -> undefined
+          -- Parser.EIf i -> undefined
+          -- Parser.EFn ps -> undefined
+          -- Parser.ELet l -> undefined
+          -- Parser.EMatch m -> undefined
+          -- Parser.EVar i -> undefined
+          -- Parser.EOpen o e -> undefined
+
+
+instance Checkable (Parser.Lit HasPos.Pos) where
+
+    check Parser.LitInt {} =
+        success (TyNominal "Language.Whippet.Prim.Int")
+
+    check Parser.LitChar {} =
+        success (TyNominal "Language.Whippet.Prim.Char")
+
+    check Parser.LitScientific {} =
+        success (TyNominal "Language.Whippet.Prim.Scientific")
+
+    check Parser.LitRecord {} =
+        undefined
+
+    check Parser.LitString {} =
+        success (TyNominal "Language.Whippet.Prim.String")
+
+    -- An empty list literal has a polymorphic type.
+    check (Parser.LitList []) = do
+            var <- freshTyVar
+            success (TyApp (TyNominal "Language.Whippet.Prim.Seq") var)
+
+    -- Otherwise a list must have values of a homogeneous type.
+    check (Parser.LitList (x : xs)) = do
+        t1 <- check x
+        Foldable.traverse_ (\x -> check x >>= unify HasPos.emptyPos t1) xs
+        success (TyApp (TyNominal "Language.Whippet.Prim.Seq") t1)

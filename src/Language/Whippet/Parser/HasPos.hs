@@ -8,12 +8,11 @@ import qualified Text.Trifecta                  as Trifecta
 
 type Pos = Trifecta.Span
 
+emptyPos :: Pos
+emptyPos = Trifecta.Span mempty mempty mempty
+
 class HasPos a where
-    position :: a -> Pos
-
-instance HasPos (Parser.Annotation Pos) where
-    position p = p ^. annotationPos
-
+    position :: a -> Maybe Pos
 
 instance HasPos (Parser.Type Pos) where
     position (Parser.TyNominal    p _) = p

@@ -25,8 +25,11 @@ parseExpr s =
       Right x -> Right (const () <$> x)
       Left e  -> Left e
 
-parseExprFromFile file = runIO $
-    parseFileFromResources (Parser.expr <* Trifecta.eof) file
+parseExprFromFile file = do
+    result <- runIO $ parseFileFromResources (Parser.expr <* Trifecta.eof) file
+    case result of
+      Right x -> pure $ Right (const () <$> x)
+      Left e  -> pure $ Left e
 
 
 spec :: Spec
@@ -308,10 +311,10 @@ spec = do
 
 
     let dVar :: Text -> Discriminator ()
-        dVar x = DVar (Ident () x)
+        dVar x = DVar (Ident (pure ()) x)
 
         dCtor :: Text -> Discriminator ()
-        dCtor x = DCtor (Ident () x)
+        dCtor x = DCtor (Ident (pure ()) x)
 
     describe "lambda" $ do
 
