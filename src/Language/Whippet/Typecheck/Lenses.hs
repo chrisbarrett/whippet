@@ -14,6 +14,9 @@ makePrisms ''QualId
 makeLenses ''Ident
 makePrisms ''Ident
 
+makeLenses ''Err
+makePrisms ''Err
+
 makeLenses ''Error
 makePrisms ''Error
 

@@ -311,10 +311,10 @@ spec = do
 
 
     let dVar :: Text -> Discriminator ()
-        dVar x = DVar (Ident (pure ()) x)
+        dVar x = DVar (Ident () x)
 
         dCtor :: Text -> Discriminator ()
-        dCtor x = DCtor (Ident (pure ()) x)
+        dCtor x = DCtor (Ident () x)
 
     describe "lambda" $ do
 

@@ -1,10 +1,10 @@
 module Language.Whippet.Typecheck.Errors where
 
+import           Language.Whippet.Parser.Pos
 import           Language.Whippet.Typecheck.Types
-import qualified Text.Trifecta                    as Trifecta
 
 data Err = Err {
-      _errLoc   :: Trifecta.Span
+      _errLoc   :: Pos
     , _errError :: Error
     }
     deriving (Show, Eq, Ord)

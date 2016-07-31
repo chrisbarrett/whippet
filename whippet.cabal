@@ -16,8 +16,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Language.Whippet.Parser
-                     , Language.Whippet.Parser.HasPos
                      , Language.Whippet.Parser.Lenses
+                     , Language.Whippet.Parser.Pos
                      , Language.Whippet.Parser.Types
                      , Language.Whippet.Typecheck
                      , Language.Whippet.Typecheck.CheckM

@@ -6,7 +6,17 @@ module Language.Whippet.Parser.Lenses where
 import           Control.Lens                  (Lens')
 import           Control.Lens.TH
 import           Data.Text                     (Text)
+import           Language.Whippet.Parser.Pos
 import           Language.Whippet.Parser.Types
+
+makeLenses ''Line
+makePrisms ''Line
+
+makeLenses ''Col
+makePrisms ''Col
+
+makeLenses ''Pos
+makePrisms ''Pos
 
 makeLenses ''Ident
 makePrisms ''Ident

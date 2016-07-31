@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Whippet.Typecheck.ExprSpec where
 
@@ -8,7 +9,6 @@ import           Data.Sequence                      (Seq)
 import           Data.Text                          (Text)
 import qualified Data.Text                          as Text
 import qualified Language.Whippet.Parser            as Parser
-import qualified Language.Whippet.Parser.HasPos     as HasPos
 import           Language.Whippet.Parser.ParseUtils
 import qualified Language.Whippet.Typecheck         as Typecheck
 import           Test.Hspec
@@ -16,9 +16,12 @@ import           Test.Hspec
 main :: IO ()
 main = hspec spec
 
-runCheck :: Parser.Expr () -> Either (Seq Typecheck.Err) Typecheck.Type
+runCheck :: Parser.Expr a -> Either (Seq Typecheck.Err) Typecheck.Type
 runCheck =
-    Typecheck.typecheck . fmap (const HasPos.emptyPos)
+    Typecheck.typecheck . fmap (const ())
+
+instance Parser.HasPos () where
+    position () = Nothing
 
 spec :: Spec
 spec = do
@@ -77,7 +80,9 @@ spec = do
 
 
         describe "type annotations" $ do
-            let ann e t = Parser.EAnnotation (Parser.Annotation Nothing e t)
+            let ann :: Parser.Expr () -> Parser.Type () -> Parser.Expr ()
+                ann e t = Parser.EAnnotation (Parser.Annotation () e t)
+
                 tyString = nominalType fullyQualifiedStringType
 
             describe "invalid annotation" $ do

@@ -57,19 +57,19 @@ eraseSpans :: AST a -> AST ()
 eraseSpans = fmap (const ())
 
 ident :: Text -> Ident ()
-ident = Ident (pure ())
+ident = Ident ()
 
 nominalType :: Text -> Type ()
-nominalType = TyNominal (pure ()) . QualId . pure . ident
+nominalType = TyNominal () . QualId . pure . ident
 
 tyVar :: Text -> Type ()
-tyVar = TyVar (pure ()) . ident
+tyVar = TyVar () . ident
 
 int :: Integer -> Expr ()
 int = ELit . LitInt
 
 var :: Text -> Expr ()
-var = EVar . Ident (pure ())
+var = EVar . Ident ()
 
 str :: Text -> Expr ()
 str = ELit . LitString

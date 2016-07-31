@@ -31,7 +31,7 @@ resolve (Parser.TyNominal _ (Parser.QualId path)) =
 
 -- |Return the first of the two types if they unify, otherwise add a type error
 -- to the type checking context and return a divergence marker.
-unify :: Trifecta.Span -> Type -> Type -> TypeCheck
+unify :: Parser.Pos -> Type -> Type -> TypeCheck
 
 -- Divergences are subsumed by the expected type in order to continue
 -- type-checking.
@@ -65,7 +65,7 @@ class Checkable a where
     check :: a -> TypeCheck
 
 
-instance Checkable (Parser.Expr Parser.Pos) where
+instance Parser.HasPos p => Checkable (Parser.Expr p) where
     check e =
         case e of
           -- An annotation asserts that an expression has an expected type, then
@@ -87,7 +87,7 @@ instance Checkable (Parser.Expr Parser.Pos) where
           -- Parser.EOpen o e -> undefined
 
 
-instance Checkable (Parser.Lit Parser.Pos) where
+instance Parser.HasPos p => Checkable (Parser.Lit p) where
 
     check Parser.LitInt {} =
         success (TyNominal "Language.Whippet.Prim.Int")
@@ -118,5 +118,5 @@ instance Checkable (Parser.Lit Parser.Pos) where
 instance Checkable Parser.TopLevel where
     check = undefined
 
-instance Checkable (Parser.AST Parser.Pos) where
+instance Parser.HasPos p => Checkable (Parser.AST p) where
     check = undefined

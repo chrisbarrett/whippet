@@ -6,7 +6,7 @@
 module Language.Whippet.Parser (
     -- * Parser types
       module Language.Whippet.Parser.Types
-    , module Language.Whippet.Parser.HasPos
+    , module Language.Whippet.Parser.Pos
     -- |Custom parser type for the language, which handles the whitespace and
     -- comment rules of Whippet.
     , P
@@ -30,28 +30,28 @@ module Language.Whippet.Parser (
     , expr
     ) where
 
-import           Control.Applicative            (Alternative, (<|>))
-import           Control.Lens                   hiding (op)
-import           Control.Monad                  (MonadPlus)
-import           Control.Monad.Trans            (MonadIO)
-import qualified Data.Char                      as Char
-import qualified Data.List.NonEmpty             as NonEmpty
+import           Control.Applicative           (Alternative, (<|>))
+import           Control.Lens                  hiding (op)
+import           Control.Monad                 (MonadPlus)
+import           Control.Monad.Trans           (MonadIO)
+import qualified Data.Char                     as Char
+import qualified Data.List.NonEmpty            as NonEmpty
 import           Data.Semigroup
-import           Data.String                    (fromString)
-import           Data.Text                      (Text)
-import qualified Data.Text                      as Text
-import qualified Text.Parser.Expression         as Parser
-import qualified Text.Parser.LookAhead          as Parser
-import qualified Text.Parser.Token.Highlight    as Parser
-import qualified Text.Parser.Token.Style        as Parser
-import           Text.Trifecta                  hiding (braces, brackets, comma,
-                                                 eof, ident, parens,
-                                                 parseString, semi, stringLit)
-import qualified Text.Trifecta                  as Trifecta
-import qualified Text.Trifecta.Delta            as Trifecta
+import           Data.String                   (fromString)
+import           Data.Text                     (Text)
+import qualified Data.Text                     as Text
+import           Debug.Trace
+import qualified Text.Parser.Expression        as Parser
+import qualified Text.Parser.LookAhead         as Parser
+import qualified Text.Parser.Token.Highlight   as Parser
+import qualified Text.Parser.Token.Style       as Parser
+import           Text.Trifecta                 hiding (braces, brackets, comma,
+                                                eof, ident, parens, parseString,
+                                                position, semi, stringLit)
+import qualified Text.Trifecta                 as Trifecta
+import qualified Text.Trifecta.Delta           as Trifecta
 
-import           Language.Whippet.Parser.HasPos
-import qualified Language.Whippet.Parser.HasPos as HasPos
+import           Language.Whippet.Parser.Pos
 import           Language.Whippet.Parser.Types
 
 -- Custom parser
@@ -79,6 +79,19 @@ spaceParser p =
   where
     comments = Parser.emptyCommentStyle
                 & Parser.commentLine .~ "//"
+
+pos :: P PosT
+pos = do
+    p <- Trifecta.position
+    case p of
+      Trifecta.Lines l c _ _ ->
+          pure (Just (Pos (Line l) (Col c)))
+
+      Trifecta.Directed _ l c _ _ ->
+          pure (Just (Pos (Line l) (Col c)))
+
+      _ ->
+          pure Nothing
 
 runP :: P a -> Parser a
 runP = unP
@@ -118,7 +131,8 @@ identStyle =
 
 -- Parser definitions
 
-type TopLevel = [AST Pos]
+type PosT = Maybe Pos
+type TopLevel = [AST PosT]
 
 parseFile :: MonadIO m => FilePath -> m (Result TopLevel)
 parseFile =
@@ -133,7 +147,7 @@ topLevel = do
     whiteSpace
     many topLevelItem <* eof
 
-topLevelItem :: P (AST Pos)
+topLevelItem :: P (AST PosT)
 topLevelItem =
     choice [ AstOpen <$> open <?> "open"
            , AstModule <$> module' <?> "module"
@@ -144,7 +158,7 @@ topLevelItem =
 
 -- Top-level
 
-open :: P (Open Pos)
+open :: P (Open PosT)
 open = do
     reserved "open"
     i <- qualifiedModule
@@ -152,28 +166,28 @@ open = do
     h <- optional (reserved "hiding" *> parens (optional comma *> ident `sepBy` comma))
     pure (Open i a h)
 
-signature :: P (Signature Pos)
+signature :: P (Signature PosT)
 signature = do
     reserved "signature"
     i <- qualifiedModule
     b <- braces (many abstractDecl)
     pure (Signature i b)
 
-module' :: P (Module Pos)
+module' :: P (Module PosT)
 module' = do
     reserved "module"
     i <- qualifiedModule
     b <- braces (many topLevelItem)
     pure (Module i b)
 
-typeclass :: P (Typeclass Pos)
+typeclass :: P (Typeclass PosT)
 typeclass = do
     reserved "typeclass"
     i <- typeclassName
     b <- braces (many functionOrSig)
     pure (Typeclass i b)
 
-instance' :: P (Instance Pos)
+instance' :: P (Instance PosT)
 instance' = do
     reserved "instance"
     c <- qualifiedTypeclass
@@ -181,7 +195,7 @@ instance' = do
     b <- braces (many function)
     pure (Instance c t b)
 
-abstractDecl :: P (Decl Pos)
+abstractDecl :: P (Decl PosT)
 abstractDecl =
     choice [ absType, DecFunSig <$> functionSig ]
   where
@@ -191,7 +205,7 @@ abstractDecl =
         ps <- many typeParameter <?> "type parameter"
         pure (DecAbsType (AbsType i ps))
 
-declaration :: P (Decl Pos)
+declaration :: P (Decl PosT)
 declaration =
     parser <?> "declaration"
   where
@@ -208,7 +222,7 @@ declaration =
 
     -- Concrete and abstract types share the same prefix. Delay branching in the
     -- parser to improve error messages.
-    decType :: P (Decl Pos)
+    decType :: P (Decl PosT)
     decType = do
         reserved "type"
         id <- typeName
@@ -224,7 +238,7 @@ declaration =
         abstractType id tyArgs =
             pure (DecAbsType (AbsType id tyArgs))
 
-constructor :: P (Ctor Pos)
+constructor :: P (Ctor PosT)
 constructor =
     parser <?> "constructor"
   where
@@ -233,7 +247,7 @@ constructor =
         ts <- many typeRef
         pure (Ctor i ts)
 
-function :: P (Function Pos)
+function :: P (Function PosT)
 function = do
     reserved "let"
     i <- ident
@@ -243,7 +257,7 @@ function = do
     d <- functionBody
     pure (Function i ps t d)
 
-functionBody :: P (Expr Pos)
+functionBody :: P (Expr PosT)
 functionBody =
     choice [ ELit <$> recordLit            <* optional semi
            , fnLit                         <* optional semi
@@ -258,7 +272,7 @@ functionBody =
            , expr <* semi
            ]
 
-functionSig :: P (FunctionSig Pos)
+functionSig :: P (FunctionSig PosT)
 functionSig = do
     reserved "let"
     i <- ident
@@ -266,7 +280,7 @@ functionSig = do
     t <- typeRef
     pure (FunctionSig i t)
 
-functionOrSig :: P (FnOrSig Pos)
+functionOrSig :: P (FnOrSig PosT)
 functionOrSig = do
     reserved "let"
     i <- ident
@@ -293,7 +307,7 @@ functionOrSig = do
           Just t  -> choice [try equals *> commitFn, commitSig t]
 
 
-fnParam :: P (FnParam Pos)
+fnParam :: P (FnParam PosT)
 fnParam =
     parens paramWithTy <|> paramIdent
   where
@@ -307,7 +321,7 @@ fnParam =
 
 
 
-recordType :: P (RecordType Pos)
+recordType :: P (RecordType PosT)
 recordType = do
     reserved "record"
     i <- typeName
@@ -319,7 +333,7 @@ recordType = do
 
 -- Types
 
-typeRef :: P (Type Pos)
+typeRef :: P (Type PosT)
 typeRef =
     Parser.buildExpressionParser operators tyTerm <?> "type"
   where
@@ -340,30 +354,30 @@ typeRef =
     -- the span of the first argument.
 
     appParser = pure $ \t1 t2 ->
-        TyApp (HasPos.position t1) t1 t2
+        TyApp (position t1) t1 t2
 
     arrowParser = pure $ \t1 t2 ->
-        TyArrow (HasPos.position t1) t1 t2
+        TyArrow (position t1) t1 t2
 
 
-forallType :: P (Type Pos)
+forallType :: P (Type PosT)
 forallType = do
-    ((b, t) :~ p) <- spanned $ do
-        reserved "forall"
-        binders <- NonEmpty.fromList <$> some typeParameter
-        dot
-        t <- typeRef
-        pure (binders, t)
+    p <- pos
+    reserved "forall"
+    binders <- NonEmpty.fromList <$> some typeParameter
+    dot
+    t <- typeRef
+    pure (TyForall p binders t)
 
-    pure (TyForall (Just p) b t)
-
-constraintType :: P (Type Pos)
+constraintType :: P (Type PosT)
 constraintType =
     (parens parser <|> parser) <?> "constraint"
   where
     parser = do
-        ((cs, t) :~ p) <- spanned $ (,) <$> try constraints <*> typeRef
-        pure (TyConstraint (Just p) cs t)
+        p <- pos
+        cs <- try constraints
+        t <- typeRef
+        pure (TyConstraint p cs t)
 
     constraints = do
         res <- NonEmpty.fromList <$> constraint `sepBy1` comma
@@ -375,46 +389,51 @@ constraintType =
         ps <- NonEmpty.fromList <$> some typeParameter
         pure (Constraint ctor ps)
 
-typeVariable :: P (Type Pos)
+typeVariable :: P (Type PosT)
 typeVariable = do
-    (i :~ s) <- spanned ident
-    pure (TyVar (Just s) i)
+    p <- pos
+    i <- ident
+    pure (TyVar p i)
 
-structuralType :: P (Type Pos)
+structuralType :: P (Type PosT)
 structuralType = do
-    (fs :~ p) <- spanned recordFields
-    pure (TyStructural (Just p) fs)
+    p <- pos
+    fs <- recordFields
+    pure (TyStructural p fs)
 
-nominalType :: P (Type Pos)
+nominalType :: P (Type PosT)
 nominalType = do
-    (t :~ p) <- spanned qualifiedType
-    pure (TyNominal (Just p) t)
+    p <- pos
+    t <- qualifiedType
+    pure (TyNominal p t)
 
-recordFields :: P [Field Pos]
+recordFields :: P [Field PosT]
 recordFields =
     braces (optional comma *> field `sepBy1` comma)
   where
-    field :: P (Field Pos)
+    field :: P (Field PosT)
     field = do
         i <- ident <?> "field name"
         colon <?> "type annotation"
         t <- typeRef
         pure (Field i t)
 
-typeParameter :: P (TypeParameter Pos)
+typeParameter :: P (TypeParameter PosT)
 typeParameter = do
     let style = identStyle & styleStart .~ lower
-    (s :~ span) <- spanned (Trifecta.ident style)
-    pure (TypeParameter (Ident (Just span) s))
+    p <- pos
+    s <- Trifecta.ident style
+    pure (TypeParameter (Ident p s))
 
 
 -- Expressions
 
-expr :: P (Expr Pos)
+expr :: P (Expr PosT)
 expr = do
+    p <- pos
     e <- Parser.buildExpressionParser operators exprTerm <?> "expression"
     t <- exprTypeAnnotation
-    pure (maybe e (\t -> EAnnotation (Annotation (HasPos.position t) e t)) t)
+    pure (maybe e (\t -> EAnnotation (Annotation p e t)) t)
   where
     operators = [ [Parser.Infix parseApp Parser.AssocLeft]
                 , [Parser.Infix parseOp Parser.AssocRight]
@@ -423,20 +442,22 @@ expr = do
         pure (\x y -> EApp (App x y))
 
     parseOp = do
-        (s :~ span) <- spanned $ token (some (oneOf "<>/+-^.=!~@"))
-        let op = EVar (Ident (Just span) (Text.pack s))
-        pure $ \x y -> EApp (App (EApp (App op x)) y)
+        p <- pos
+        s <- token (some (oneOf "<>/+-^.=!~@"))
+        pure $ \x y ->
+          let op = EVar (Ident p (Text.pack s))
+          in EApp (App (EApp (App op x)) y)
 
 
 -- Expressions are a superset of the terms allowed in guards.
 
-exprTerm :: P (Expr Pos)
+exprTerm :: P (Expr PosT)
 exprTerm =
     choice [ guardTerm
            , EIf <$> ifThenElse
            ]
 
-guardTerm :: P (Expr Pos)
+guardTerm :: P (Expr PosT)
 guardTerm =
     choice [ parens expr
            , ELet <$> let'
@@ -458,21 +479,21 @@ guardTerm =
         pure (EOpen o b)
 
 
-charLit :: P (Lit Pos)
+charLit :: P (Lit PosT)
 charLit = LitChar <$> charLiteral
 
-recordLit :: P (Lit Pos)
+recordLit :: P (Lit PosT)
 recordLit =
     LitRecord <$> braces (optional comma *> field `sepEndBy` comma)
   where
-    field :: P (Ident Pos, Expr Pos)
+    field :: P (Ident PosT, Expr PosT)
     field = do
         f <- ident
         colon <?> "field value"
         e <- expr
         pure (f, e)
 
-let' :: P (Let Pos)
+let' :: P (Let PosT)
 let' = do
     reserved "let"
     d <- discriminator
@@ -481,7 +502,7 @@ let' = do
     b <- expr
     pure (Let d e b)
 
-match :: P (Match Pos)
+match :: P (Match PosT)
 match = do
     reserved "match"
     e <- expr
@@ -489,7 +510,7 @@ match = do
     ps <- patterns
     pure (Match e ps)
 
-exprTypeAnnotation :: P (Maybe (Type Pos))
+exprTypeAnnotation :: P (Maybe (Type PosT))
 exprTypeAnnotation = do
     c <- optional colon <?> "type annotation"
     case c of
@@ -499,7 +520,7 @@ exprTypeAnnotation = do
     tyParser = parens typeRef <|> nominalType <|> structuralType <|> typeVariable
 
 
-ifThenElse :: P (If Pos)
+ifThenElse :: P (If PosT)
 ifThenElse = do
     reserved "if"
     i <- expr
@@ -507,7 +528,7 @@ ifThenElse = do
     e <- reserved "else" *> expr
     pure (If i t e)
 
-fnLit :: P (Expr Pos)
+fnLit :: P (Expr PosT)
 fnLit = do
     reserved "fn"
     EFn <$> choice [bare, patterns]
@@ -516,14 +537,15 @@ fnLit = do
         p <- try pat
         pure [p]
 
-hole :: P (Expr Pos)
+hole :: P (Expr PosT)
 hole = do
     let holeStyle = identStyle & styleStart .~ (letter <|> char '_')
-    (s :~ span) <- spanned (Trifecta.ident holeStyle)
-    pure (EHole (Ident (Just span) s))
+    p <- pos
+    s <- Trifecta.ident holeStyle
+    pure (EHole (Ident p s))
 
 
-numberLit :: P (Lit Pos)
+numberLit :: P (Lit PosT)
 numberLit = do
     n <- try (runUnspaced integerOrScientific)
     -- Inspect the next char in the stream to ensure unexpected suffixes are
@@ -534,11 +556,11 @@ numberLit = do
       else token (pure (either LitInt LitScientific n))
 
 
-stringLit :: P (Lit Pos)
+stringLit :: P (Lit PosT)
 stringLit =
     parser <?> "string"
   where
-    parser :: P (Lit Pos)
+    parser :: P (Lit PosT)
     parser = token $ highlight Parser.StringLiteral $ do
         str <- char '"' *> (escapeSequence <|> anyChar) `manyTill` char '"'
         pure (LitString (Text.pack str))
@@ -556,7 +578,7 @@ stringLit =
           'b'  -> pure '\b'
           _    -> fail "Invalid escape sequence"
 
-listLiteral :: P (Lit Pos)
+listLiteral :: P (Lit PosT)
 listLiteral =
     parser <?> "list"
   where
@@ -566,33 +588,33 @@ listLiteral =
 
 -- Pattern matching
 
-patterns :: P [Pat Pos]
+patterns :: P [Pat PosT]
 patterns = braces (optional pipe *> pat `sepBy` pipe)
 
-pat :: P (Pat Pos)
+pat :: P (Pat PosT)
 pat = do
     d <- discriminator
     g <- optional guard
     e <- rarrow *> expr
     pure (Pat d g e)
 
-guard :: P (Guard Pos)
+guard :: P (Guard PosT)
 guard =
     choice [ IfGuard <$> (reserved "if" *> guardExpr)
            , UnlessGuard <$> (reserved "unless" *> guardExpr)
            ]
      <?> "pattern guard"
   where
-    guardExpr :: P (Expr Pos)
+    guardExpr :: P (Expr PosT)
     guardExpr = do
         e <- Parser.buildExpressionParser operators guardTerm <?> "expression"
         t <- exprTypeAnnotation
-        pure (maybe e (\t -> EAnnotation (Annotation (HasPos.position t) e t)) t)
+        pure (maybe e (\t -> EAnnotation (Annotation (position t) e t)) t)
       where
         operators = [[Parser.Infix parseApp Parser.AssocLeft]]
         parseApp = pure (\x y -> EApp (App x y))
 
-discriminator :: P (Discriminator Pos)
+discriminator :: P (Discriminator PosT)
 discriminator = do
     e <- Parser.buildExpressionParser operators discTerm <?> "discriminator"
     t <- exprTypeAnnotation
@@ -614,8 +636,9 @@ discriminator = do
 
     dwildcard = do
         let wildcardStyle = identStyle & styleStart .~ (letter <|> char '_')
-        (s :~ span) <- spanned (Trifecta.ident wildcardStyle) <?> "wildcard"
-        pure (DWildcard (Ident (Just span) s))
+        p <- pos
+        s <- Trifecta.ident wildcardStyle <?> "wildcard"
+        pure (DWildcard (Ident p s))
 
     operators = [ [Parser.Infix (reserved "as" *> pure DAs) Parser.AssocLeft]
                 , [Parser.Infix (pure DApp) Parser.AssocLeft]
@@ -624,54 +647,57 @@ discriminator = do
 
 -- Identifiers
 
-ctorName :: P (Ident Pos)
+ctorName :: P (Ident PosT)
 ctorName =
     parser <?> "constructor name"
   where
     parser = do
         let style = identStyle & styleStart .~ upper
-        (s :~ span) <- spanned (Trifecta.ident style)
-        pure (Ident (Just span) s)
+        p <- pos
+        s <- Trifecta.ident style
+        pure (Ident p s)
 
-typeclassName :: P (Ident Pos)
+typeclassName :: P (Ident PosT)
 typeclassName =
     moduleName
     <?> "typeclass name"
 
-qualifiedTypeclass :: P (QualId Pos)
+qualifiedTypeclass :: P (QualId PosT)
 qualifiedTypeclass = qualifiedModule <?> "typeclass name"
 
-qualifiedModule :: P (QualId Pos)
+qualifiedModule :: P (QualId PosT)
 qualifiedModule =
     parser <?> "module ID"
   where
     parser = QualId . NonEmpty.fromList <$> moduleName `sepBy1` dot
 
 
-qualifiedType :: P (QualId Pos)
+qualifiedType :: P (QualId PosT)
 qualifiedType =
     parser <?> "type ID"
   where
     parser = QualId . NonEmpty.fromList <$> typeName `sepBy1` dot
 
-typeName :: P (Ident Pos)
+typeName :: P (Ident PosT)
 typeName = ctorName
     <?> "type name"
 
-moduleName :: P (Ident Pos)
+moduleName :: P (Ident PosT)
 moduleName = do
     let style =
             identStyle
                & styleStart  .~ upper
                & styleLetter .~ (alphaNum <|> oneOf "_")
-    (s :~ span) <- spanned (Trifecta.ident style)
-    pure (Ident (Just span) s)
+    p <- pos
+    s <- Trifecta.ident style
+    pure (Ident p s)
 
 -- TODO: Accept qualified var references: (modid '.')* id
-ident :: P (Ident Pos)
+ident :: P (Ident PosT)
 ident = do
-    (s :~ span) <- spanned (Trifecta.ident identStyle)
-    pure (Ident (Just span) s)
+    p <- pos
+    s <- Trifecta.ident identStyle
+    pure (Ident p s)
 
 reserved :: String -> P ()
 reserved s = reserve identStyle s <?> s

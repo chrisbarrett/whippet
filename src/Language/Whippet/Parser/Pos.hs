@@ -1,20 +1,29 @@
 {-# LANGUAGE FlexibleInstances #-}
-module Language.Whippet.Parser.HasPos where
+module Language.Whippet.Parser.Pos where
 
 import           Control.Lens
-import           Language.Whippet.Parser.Lenses
-import qualified Language.Whippet.Parser.Types  as Parser
-import qualified Text.Trifecta                  as Trifecta
+import           Data.Int
+import qualified Language.Whippet.Parser.Types as Parser
 
-type Pos = Trifecta.Span
+newtype Line = Line {_unLine :: Int64}
+  deriving (Show, Eq, Ord)
+
+newtype Col = Col {_unCol :: Int64}
+  deriving (Show, Eq, Ord)
+
+data Pos = Pos {
+    _posLine   :: !Line
+  , _posColumn :: !Col
+  }
+  deriving (Show, Eq, Ord)
 
 emptyPos :: Pos
-emptyPos = Trifecta.Span mempty mempty mempty
+emptyPos = Pos (Line 0) (Col 0)
 
 class HasPos a where
     position :: a -> Maybe Pos
 
-instance HasPos (Parser.Type Pos) where
+instance HasPos (Parser.Type (Maybe Pos)) where
     position (Parser.TyNominal    p _) = p
     position (Parser.TyVar        p _) = p
     position (Parser.TyStructural p _) = p
