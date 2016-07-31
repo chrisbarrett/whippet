@@ -44,6 +44,8 @@ executable whippet
   build-depends:       base
                      , ansi-wl-pprint
                      , optparse-applicative
+                     , lens
+                     , text
                      , trifecta
                      , whippet
 

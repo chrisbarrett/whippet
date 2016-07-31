@@ -1,9 +1,12 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 module Main where
 
-import           Control.Monad                (when)
+import           Control.Monad                (forM_)
+import qualified Errors                       as Errors
 import qualified Language.Whippet.Parser      as Parser
+import qualified Language.Whippet.Typecheck   as Typecheck
 import           Options.Applicative
 import qualified System.Environment           as Environment
 import qualified System.Exit                  as Exit
@@ -20,18 +23,34 @@ main = do
                 settings = PP.renderPretty 1 100 useColour
             in PP.displayIO h settings
 
-    ast <- Parser.parseFile optFile
-    case ast of
-        Trifecta.Success _  ->
-            when optCheckOnly $ do
-                printDoc stdout (PP.dullgreen "Parsed with no errors.")
-                Exit.exitSuccess
+    Parser.parseFile optFile >>= \case
+        Trifecta.Success ast ->
+            case Typecheck.typecheck ast of
+
+              Left errs -> do
+
+                  forM_ errs $
+                    printDoc stderr . Errors.pprint optFile
+
+                  printDoc stdout (PP.red "Type checking failed.")
+                  Exit.exitFailure
+
+              Right _ ->
+                  pure ()
+
         Trifecta.Failure errs -> do
             printDoc stderr errs
-            printDoc stdout (PP.red "Aborted with errors.")
+            printDoc stdout (PP.red "Parsing failed.")
             Exit.exitFailure
 
-    printDoc stdout (PP.dullgreen "Finished with no errors.")
+    if optCheckOnly
+      then do
+        printDoc stdout (PP.dullgreen "Finished.")
+        Exit.exitSuccess
+      else do
+        printDoc stdout (PP.red "Code emission not implemented.")
+        Exit.exitFailure
+
 
 -- * Option parsing
 
